@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Akhbar" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="colorPrimary">#0F3D5E</item>
+        <item name="colorPrimaryDark">#0F3D5E</item>
+        <item name="android:statusBarColor">#0F3D5E</item>
+        <item name="android:windowBackground">@android:color/white</item>
+    </style>
+</resources>

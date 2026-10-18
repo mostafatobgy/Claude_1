@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>أخبار اليوم</title>
+<meta name="description" content="أبرز الأخبار السياسية والاقتصادية في مصر والمنطقة والعالم، مترجمة ومرتبة حسب الأهمية">
+<meta name="theme-color" content="#0f3d5e">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@600;700&family=Noto+Naskh+Arabic:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f4f1ea; --card: #ffffff; --ink: #1d1b18; --muted: #6b665d; --line: #e4dfd3;
+  --brand: #0f3d5e; --brand-ink: #ffffff;
+  --urgent: #b42318; --urgent-bg: #fdecea; --imp: #a15c07; --imp-bg: #fdf3e2; --norm: #4b5563; --norm-bg: #eef0f2;
+  --chip: #e9e4d8; --chip-on: #0f3d5e;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121416; --card: #1b1e21; --ink: #ece9e3; --muted: #a29d93; --line: #2b2f33;
+    --brand: #0d2f48; --urgent: #ff8a7d; --urgent-bg: #3a1714; --imp: #f3b45a; --imp-bg: #33250f;
+    --norm: #b9bfc8; --norm-bg: #262a2f; --chip: #262a2f; --chip-on: #4c8fbf;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121416; --card: #1b1e21; --ink: #ece9e3; --muted: #a29d93; --line: #2b2f33;
+  --brand: #0d2f48; --urgent: #ff8a7d; --urgent-bg: #3a1714; --imp: #f3b45a; --imp-bg: #33250f;
+  --norm: #b9bfc8; --norm-bg: #262a2f; --chip: #262a2f; --chip-on: #4c8fbf;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); }
+body { font-family: "Noto Naskh Arabic", "Segoe UI", Tahoma, sans-serif; font-size: 17px; line-height: 1.75; -webkit-tap-highlight-color: transparent; }
+header { position: sticky; top: 0; z-index: 5; background: var(--brand); color: var(--brand-ink); padding: env(safe-area-inset-top) 0 0; box-shadow: 0 2px 8px rgb(0 0 0 / .15); }
+.top { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px 4px; max-width: 760px; margin: 0 auto; }
+h1 { font-family: "Noto Kufi Arabic", sans-serif; font-size: 21px; margin: 0; }
+#updated { font-size: 12.5px; opacity: .8; }
+#reload { background: none; border: 1px solid rgb(255 255 255 / .35); color: inherit; border-radius: 999px; width: 38px; height: 38px; font-size: 18px; cursor: pointer; }
+#reload.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(-360deg); } }
+nav.tabs { display: flex; gap: 4px; padding: 0 12px; max-width: 760px; margin: 0 auto; overflow-x: auto; scrollbar-width: none; }
+nav.tabs button { flex: 1 0 auto; background: none; border: 0; color: rgb(255 255 255 / .7); font: 600 15px "Noto Kufi Arabic", sans-serif; padding: 10px 12px 12px; border-bottom: 3px solid transparent; cursor: pointer; }
+nav.tabs button[aria-selected="true"] { color: #fff; border-bottom-color: #f3b45a; }
+main { max-width: 760px; margin: 0 auto; padding: 12px 16px 48px; }
+.filters { display: flex; gap: 8px; margin: 4px 0 14px; flex-wrap: wrap; }
+.filters button { border: 0; background: var(--chip); color: var(--ink); border-radius: 999px; padding: 5px 16px; font: 500 14.5px inherit; font-family: inherit; cursor: pointer; }
+.filters button[aria-pressed="true"] { background: var(--chip-on); color: #fff; }
+h2.sec { font-family: "Noto Kufi Arabic", sans-serif; font-size: 16px; margin: 22px 0 10px; display: flex; align-items: center; gap: 8px; color: var(--muted); }
+h2.sec::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: currentColor; }
+h2.sec.urgent { color: var(--urgent); } h2.sec.important { color: var(--imp); }
+article { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; }
+article.urgent { border-inline-start: 5px solid var(--urgent); }
+article.important { border-inline-start: 5px solid var(--imp); }
+.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 13px; color: var(--muted); }
+.badge { border-radius: 6px; padding: 0 8px; font-weight: 600; font-size: 12.5px; }
+.badge.urgent { color: var(--urgent); background: var(--urgent-bg); }
+.badge.important { color: var(--imp); background: var(--imp-bg); }
+.badge.normal { color: var(--norm); background: var(--norm-bg); }
+.score { display: inline-flex; gap: 2px; }
+.score i { width: 5px; height: 12px; border-radius: 2px; background: var(--line); }
+.score i.on { background: var(--muted); }
+article.urgent .score i.on { background: var(--urgent); } article.important .score i.on { background: var(--imp); }
+article h3 { font-family: "Noto Kufi Arabic", sans-serif; font-size: 17.5px; line-height: 1.65; margin: 8px 0 6px; }
+article p { margin: 0 0 6px; }
+.why { font-size: 14.5px; color: var(--muted); }
+details { font-size: 14px; margin-top: 4px; }
+summary { cursor: pointer; color: var(--chip-on); }
+details a { display: block; color: var(--chip-on); text-decoration: none; padding: 3px 0; overflow-wrap: anywhere; }
+.empty, .error { text-align: center; color: var(--muted); padding: 48px 8px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <div><h1>أخبار اليوم</h1><div id="updated">جارٍ التحميل…</div></div>
+    <button id="reload" aria-label="تحديث">⟳</button>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-region="" aria-selected="true">الأهم</button>
+    <button role="tab" data-region="egypt" aria-selected="false">مصر</button>
+    <button role="tab" data-region="region" aria-selected="false">المنطقة</button>
+    <button role="tab" data-region="world" aria-selected="false">العالم</button>
+  </nav>
+</header>
+<main>
+  <div class="filters">
+    <button data-cat="" aria-pressed="true">الكل</button>
+    <button data-cat="politics" aria-pressed="false">سياسة</button>
+    <button data-cat="economy" aria-pressed="false">اقتصاد</button>
+  </div>
+  <div id="list"></div>
+</main>
+<script>
+const REGION = { egypt: "مصر", region: "المنطقة", world: "العالم" };
+const CAT = { politics: "سياسة", economy: "اقتصاد" };
+const TIER = { urgent: "الأهم", important: "مهم", normal: "للمتابعة" };
+const view = { region: "", category: "" };
+try { Object.assign(view, JSON.parse(localStorage.getItem("view") || "{}")); } catch {}
+
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const ago = ts => {
+  const m = Math.max(1, Math.round((Date.now() / 1000 - ts) / 60));
+  if (m < 60) return `منذ ${m} دقيقة`;
+  const h = Math.round(m / 60);
+  return h < 24 ? `منذ ${h} ساعة` : `منذ ${Math.round(h / 24)} يوم`;
+};
+
+function card(s) {
+  const bars = Array.from({ length: 10 }, (_, i) => `<i class="${i < s.importance ? "on" : ""}"></i>`).join("");
+  const links = s.sources.map(l => `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.source)} ↗</a>`).join("");
+  return `<article class="${s.tier}">
+    <div class="meta">
+      <span class="badge ${s.tier}">${TIER[s.tier]}</span>
+      <span class="score" title="الأهمية ${s.importance}/10">${bars}</span>
+      <span>${REGION[s.region]} · ${CAT[s.category]}</span>
+      <span>${ago(s.published)}</span>
+    </div>
+    <h3>${esc(s.title)}</h3>
+    <p>${esc(s.summary)}</p>
+    ${s.n_sources > 1 ? `<p class="why">نشرته ${s.n_sources} مصادر</p>` : ""}
+    <details><summary>المصادر (${s.n_sources})</summary>${links}</details>
+  </article>`;
+}
+
+function render(data) {
+  const list = document.getElementById("list");
+  const stories = data.stories || [];
+  if (!stories.length) { list.innerHTML = `<div class="empty">لا توجد أخبار في هذا القسم بعد.</div>`; return; }
+  let html = "";
+  for (const t of ["urgent", "important", "normal"]) {
+    const group = stories.filter(s => s.tier === t);
+    if (group.length) html += `<h2 class="sec ${t}">${TIER[t]}</h2>` + group.map(card).join("");
+  }
+  list.innerHTML = html;
+  document.getElementById("updated").textContent = data.updated ? `آخر تحديث ${ago(data.updated)}` : "";
+}
+
+let data = null;
+
+async function load() {
+  const btn = document.getElementById("reload");
+  btn.classList.add("spin");
+  try {
+    const r = await fetch(`news.json?t=${Date.now()}`, { cache: "no-store" });
+    if (!r.ok) throw new Error(r.status);
+    data = await r.json();
+    show();
+  } catch {
+    if (data) show();
+    else document.getElementById("list").innerHTML = `<div class="error">تعذّر تحميل الأخبار. تحقق من الإنترنت ثم اضغط ⟳</div>`;
+  } finally { btn.classList.remove("spin"); }
+}
+
+function show() {
+  render({
+    updated: data.updated,
+    stories: data.stories.filter(s => (!view.region || s.region === view.region) && (!view.category || s.category === view.category)),
+  });
+}
+
+function sync() {
+  document.querySelectorAll("[data-region]").forEach(b => b.setAttribute("aria-selected", b.dataset.region === view.region));
+  document.querySelectorAll("[data-cat]").forEach(b => b.setAttribute("aria-pressed", b.dataset.cat === view.category));
+  try { localStorage.setItem("view", JSON.stringify(view)); } catch {}
+  data ? show() : load();
+}
+document.querySelectorAll("[data-region]").forEach(b => b.onclick = () => { view.region = b.dataset.region; sync(); });
+document.querySelectorAll("[data-cat]").forEach(b => b.onclick = () => { view.category = b.dataset.cat; sync(); });
+document.getElementById("reload").onclick = load;
+document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
+setInterval(load, 5 * 60 * 1000);
+sync();
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+</script>
+</body>
+</html>

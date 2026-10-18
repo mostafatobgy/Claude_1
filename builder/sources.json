@@ -1,0 +1,19 @@
+[
+  {"name": "الأهرام أونلاين", "url": "https://english.ahram.org.eg/rss/1.aspx", "lang": "en", "region": "egypt", "weight": 1.2},
+  {"name": "إيجيبت إندبندنت", "url": "https://www.egyptindependent.com/feed/", "lang": "en", "region": "egypt", "weight": 1.0},
+  {"name": "ديلي نيوز إيجيبت", "url": "https://www.dailynewsegypt.com/feed/", "lang": "en", "region": "egypt", "weight": 1.0},
+  {"name": "اليوم السابع - أخبار عاجلة", "url": "https://www.youm7.com/rss/SectionRss?SectionID=65", "lang": "ar", "region": "egypt", "weight": 1.0},
+  {"name": "مدى مصر", "url": "https://www.madamasr.com/en/feed/", "lang": "en", "region": "egypt", "weight": 1.1},
+  {"name": "الجزيرة الإنجليزية", "url": "https://www.aljazeera.com/xml/rss/all.xml", "lang": "en", "region": "region", "weight": 1.1},
+  {"name": "الشرق الأوسط", "url": "https://aawsat.com/feed", "lang": "ar", "region": "region", "weight": 1.1},
+  {"name": "ميدل إيست آي", "url": "https://www.middleeasteye.net/rss", "lang": "en", "region": "region", "weight": 1.0},
+  {"name": "بي بي سي عربي", "url": "https://feeds.bbci.co.uk/arabic/rss.xml", "lang": "ar", "region": "world", "weight": 1.2},
+  {"name": "BBC World", "url": "https://feeds.bbci.co.uk/news/world/rss.xml", "lang": "en", "region": "world", "weight": 1.2},
+  {"name": "BBC Business", "url": "https://feeds.bbci.co.uk/news/business/rss.xml", "lang": "en", "region": "world", "weight": 1.2, "category": "economy"},
+  {"name": "فرانس 24 عربي", "url": "https://www.france24.com/ar/rss", "lang": "ar", "region": "world", "weight": 1.1},
+  {"name": "دويتشه فيله عربي", "url": "https://rss.dw.com/rdf/rss-ar-all", "lang": "ar", "region": "world", "weight": 1.0},
+  {"name": "The Guardian World", "url": "https://www.theguardian.com/world/rss", "lang": "en", "region": "world", "weight": 1.1},
+  {"name": "The Guardian Business", "url": "https://www.theguardian.com/business/rss", "lang": "en", "region": "world", "weight": 1.1, "category": "economy"},
+  {"name": "CNBC Economy", "url": "https://www.cnbc.com/id/20910258/device/rss/rss.html", "lang": "en", "region": "world", "weight": 1.0, "category": "economy"},
+  {"name": "NYT World", "url": "https://rss.nytimes.com/services/xml/rss/nyt/World.xml", "lang": "en", "region": "world", "weight": 1.1}
+]

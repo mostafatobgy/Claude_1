@@ -1,0 +1,18 @@
+{
+  "name": "أخبار اليوم - سياسة واقتصاد",
+  "short_name": "أخبار اليوم",
+  "description": "أبرز الأخبار السياسية والاقتصادية في مصر والمنطقة والعالم، مترجمة للعربية ومرتبة حسب الأهمية",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f1ea",
+  "theme_color": "#0f3d5e",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"},
+    {"src": "icon.svg", "sizes": "any", "type": "image/svg+xml"}
+  ]
+}

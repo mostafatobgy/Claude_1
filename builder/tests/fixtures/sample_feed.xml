@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel><title>Sample</title>
+<item><title>Central Bank of Egypt raises key interest rates by 200 basis points</title><link>https://example.com/cbe-rates</link><description>&lt;p&gt;The CBE hiked rates to curb inflation.&lt;/p&gt;</description><pubDate>PUBDATE</pubDate></item>
+<item><title>Egypt's central bank hikes rates as inflation persists</title><link>https://example.com/cbe-rates-2</link><description>Second outlet, same story.</description><pubDate>PUBDATE</pubDate></item>
+<item><title>Local football club wins cup final</title><link>https://example.com/football</link><description>Sports.</description><pubDate>PUBDATE</pubDate></item>
+<item><title>Very old story</title><link>https://example.com/old</link><description>Old.</description><pubDate>Mon, 01 Jan 2024 10:00:00 GMT</pubDate></item>
+</channel></rss>
