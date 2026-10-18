@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 
 from fetcher import fetch_all
+from notify import notify
 from rank import classify_and_score, group_stories, tier
 from translate import Translator
 
@@ -78,6 +79,8 @@ def main():
           f"translations {translator.stats}")
     OUT.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     log.info("wrote %d stories to %s", len(data["stories"]), OUT)
+    alerts = notify(data["stories"])
+    print(f"::notice::alerts sent: {alerts}")
 
 
 if __name__ == "__main__":
