@@ -70,7 +70,7 @@ def parse_feed(content: bytes | str, source: dict, now: float | None = None) -> 
             source_category=source.get("category"),
             url=link,
             title=title,
-            summary=_clean(entry.get("summary", ""), 600),
+            summary=_clean(entry.get("summary", ""), 300),
             published=min(published, int(now)),
         ))
     return items
