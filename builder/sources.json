@@ -15,5 +15,11 @@
   {"name": "The Guardian World", "url": "https://www.theguardian.com/world/rss", "lang": "en", "region": "world", "weight": 1.1},
   {"name": "The Guardian Business", "url": "https://www.theguardian.com/business/rss", "lang": "en", "region": "world", "weight": 1.1, "category": "economy"},
   {"name": "CNBC Economy", "url": "https://www.cnbc.com/id/20910258/device/rss/rss.html", "lang": "en", "region": "world", "weight": 1.0, "category": "economy"},
-  {"name": "NYT World", "url": "https://rss.nytimes.com/services/xml/rss/nyt/World.xml", "lang": "en", "region": "world", "weight": 1.1}
+  {"name": "NYT World", "url": "https://rss.nytimes.com/services/xml/rss/nyt/World.xml", "lang": "en", "region": "world", "weight": 1.1},
+  {"name": "البوابة العربية للأخبار التقنية", "url": "https://aitnews.com/feed/", "lang": "ar", "region": "world", "weight": 1.0, "category": "tech"},
+  {"name": "عالم التقنية", "url": "https://www.tech-wd.com/wd/feed/", "lang": "ar", "region": "world", "weight": 1.0, "category": "tech"},
+  {"name": "BBC Technology", "url": "https://feeds.bbci.co.uk/news/technology/rss.xml", "lang": "en", "region": "world", "weight": 1.2, "category": "tech"},
+  {"name": "The Verge", "url": "https://www.theverge.com/rss/index.xml", "lang": "en", "region": "world", "weight": 1.0, "category": "tech"},
+  {"name": "Ars Technica", "url": "https://feeds.arstechnica.com/arstechnica/index", "lang": "en", "region": "world", "weight": 1.0, "category": "tech"},
+  {"name": "TechCrunch", "url": "https://techcrunch.com/feed/", "lang": "en", "region": "world", "weight": 1.0, "category": "tech"}
 ]

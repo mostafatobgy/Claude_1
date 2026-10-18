@@ -101,3 +101,20 @@ def test_is_arabic():
     assert build.is_arabic("البنك المركزي يرفع الفائدة 200 نقطة")
     assert not build.is_arabic("Zelenskyy thanks Trump")
     assert not build.is_arabic("")
+
+
+def test_tech_category_and_tech_feed_filtering(tmp_path):
+    FakeTranslator.DICT.update({
+        "Nvidia unveils new AI chip": "إنفيديا تكشف عن شريحة ذكاء اصطناعي جديدة",
+        "The best headphones deals this week": "أفضل عروض سماعات الرأس هذا الأسبوع",
+    })
+    items = (feed("verge", "en", "world", ("Nvidia unveils new AI chip", ""),
+                  ("The best headphones deals this week", ""), category="tech")
+             + feed("aitnews", "ar", "world", ("الذكاء الاصطناعي يدخل المدارس المصرية", ""), category="tech")
+             + feed("ahram", "ar", "egypt", ("اتصال هاتفي بين الرئيس السيسي ونظيره الفرنسي لبحث مفاوضات غزة", "")))
+    stories = build.build(items, FakeTranslator(tmp_path))["stories"]
+    by_title = {s["title"]: s for s in stories}
+    assert by_title["إنفيديا تكشف عن شريحة ذكاء اصطناعي جديدة"]["category"] == "tech"
+    assert by_title["الذكاء الاصطناعي يدخل المدارس المصرية"]["region"] == "egypt"
+    assert not any("عروض" in t for t in by_title), "shopping posts from tech feeds are dropped"
+    assert by_title["اتصال هاتفي بين الرئيس السيسي ونظيره الفرنسي لبحث مفاوضات غزة"]["category"] == "politics"

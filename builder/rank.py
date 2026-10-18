@@ -32,6 +32,20 @@ POLITICS = {
     "نووي": 2.5, "غزة": 2.5, "إسرائيل": 2, "إيران": 2, "السودان": 2, "ليبيا": 1.5, "إثيوبيا": 2, "النيل": 2.5,
     "سد النهضة": 3, "الحكومة": 1, "الجيش": 1.5, "احتجاج": 1.5, "مجلس الأمن": 2, "الأمم المتحدة": 1, "الناتو": 1.5,
 }
+TECH = {
+    "artificial intelligence": 2.5, "ai": 2, "openai": 2, "chatgpt": 2, "anthropic": 2, "gemini": 1.5, "nvidia": 2,
+    "chip": 2, "semiconductor": 2.5, "apple": 1.5, "iphone": 1.5, "google": 1.5, "microsoft": 1.5, "meta": 1,
+    "samsung": 1.5, "android": 1, "smartphone": 1, "cyberattack": 2.5, "hack": 2, "data breach": 2.5,
+    "spacex": 1.5, "satellite": 1, "starlink": 1.5, "5g": 1.5, "quantum": 1.5, "tesla": 1,
+    "electric vehicle": 1, "startup": 1, "software": 1, "antitrust": 2,
+    "الذكاء الاصطناعي": 2.5, "شات جي بي تي": 2, "إنفيديا": 2, "رقائق": 2, "الرقائق": 2, "أشباه الموصلات": 2.5,
+    "آبل": 1.5, "أبل": 1.5, "آيفون": 1.5, "جوجل": 1.5, "غوغل": 1.5, "مايكروسوفت": 1.5, "ميتا": 1, "سامسونج": 1.5,
+    "أندرويد": 1, "هجوم سيبراني": 2.5, "اختراق": 1, "تسريب بيانات": 2.5, "الأمن السيبراني": 2,
+    "سبيس إكس": 1.5, "قمر صناعي": 1, "ستارلينك": 1.5, "الجيل الخامس": 1.5, "شركة ناشئة": 1, "الشركات الناشئة": 1, "التحول الرقمي": 1.5, "الاتصالات": 1,
+}
+# Tech feeds also publish shopping/reviews/games content; drop that.
+TECH_EXCLUDE = ["deal", "deals", "best ", "review:", "hands-on", "gift guide", "wordle", "trailer", "how to",
+                "عرض خاص", "خصم", "مراجعة", "أفضل", "طريقة", "كيف ت", "لعبة"]
 EXCLUDE = [
     "football", "soccer", "match", "league", "cup final", "goal", "film", "movie", "actor", "actress", "singer",
     "celebrity", "recipe", "fashion", "tennis", "olympic", "horoscope", "weather forecast",
@@ -125,7 +139,7 @@ def group_stories(items: list[RawItem], arabic: dict[str, str]) -> list[Story]:
 
 
 def classify_and_score(story: Story, now: float | None = None) -> bool:
-    """Fills category/region/importance/score. Returns False if the story is not politics/economy."""
+    """Fills category/region/importance/score. Returns False if the story is not politics/economy/tech."""
     now = now or time.time()
     text = " ".join(f"{i.title} {i.summary}" for i in story.items).lower() + " " + story.title_ar + " " + story.summary_ar
     if _matches(text, EXCLUDE) and not _matches(story.title_ar + " " + story.items[0].title.lower(), ["حرب", "war"]):
@@ -133,16 +147,19 @@ def classify_and_score(story: Story, now: float | None = None) -> bool:
 
     econ = {w: ECONOMY[w] for w in _matches(text, ECONOMY)}
     pol = {w: POLITICS[w] for w in _matches(text, POLITICS)}
+    tech = {w: TECH[w] for w in _matches(text, TECH)}
     feed_cat = next((i.source_category for i in story.items if i.source_category), None)
-    if not econ and not pol and not feed_cat:
+    if feed_cat == "tech":
+        headline = story.items[0].title.lower() + " " + story.title_ar
+        if _matches(headline, TECH_EXCLUDE):
+            return False
+    if not econ and not pol and not tech and not feed_cat:
         return False
-    econ_w, pol_w = sum(econ.values()), sum(pol.values())
-    if not econ and not pol:
+    weights = {"politics": sum(pol.values()), "economy": sum(econ.values()), "tech": sum(tech.values())}  # ties -> first
+    if feed_cat and (weights[feed_cat] > 0 or not any(weights.values())):
         story.category = feed_cat
-    elif feed_cat == "economy" and econ:
-        story.category = "economy"
     else:
-        story.category = "economy" if econ_w > pol_w else "politics"
+        story.category = max(weights, key=weights.get)
 
     if _matches(text, EGYPT):
         story.region = "egypt"
@@ -152,14 +169,15 @@ def classify_and_score(story: Story, now: float | None = None) -> bool:
         story.region = story.items[0].source_region
 
     n_sources = len({i.source for i in story.items})
-    top_kw = sorted({**econ, **pol}.values(), reverse=True)[:2]
+    top_kw = sorted({**econ, **pol, **tech}.values(), reverse=True)[:2]
     raw = 1 + 0.8 * sum(top_kw) + 1.5 * math.log2(n_sources)
     if story.region == "egypt":
         raw += 1
     elif story.region == "region":
         raw += 0.5
     story.importance = max(1, min(10, round(raw)))
-    story.keywords = sorted({**econ, **pol}, key=lambda w: -{**econ, **pol}[w])[:3]
+    all_kw = {**econ, **pol, **tech}
+    story.keywords = sorted(all_kw, key=lambda w: -all_kw[w])[:3]
 
     age_h = (now - min(i.published for i in story.items)) / 3600
     weight = max(i.source_weight for i in story.items)

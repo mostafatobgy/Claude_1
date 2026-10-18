@@ -90,12 +90,13 @@ details a { display: block; color: var(--chip-on); text-decoration: none; paddin
     <button data-cat="" aria-pressed="true">الكل</button>
     <button data-cat="politics" aria-pressed="false">سياسة</button>
     <button data-cat="economy" aria-pressed="false">اقتصاد</button>
+    <button data-cat="tech" aria-pressed="false">تكنولوجيا</button>
   </div>
   <div id="list"></div>
 </main>
 <script>
 const REGION = { egypt: "مصر", region: "المنطقة", world: "العالم" };
-const CAT = { politics: "سياسة", economy: "اقتصاد" };
+const CAT = { politics: "سياسة", economy: "اقتصاد", tech: "تكنولوجيا" };
 const TIER = { urgent: "الأهم", important: "مهم", normal: "للمتابعة" };
 const view = { region: "", category: "" };
 try { Object.assign(view, JSON.parse(localStorage.getItem("view") || "{}")); } catch {}

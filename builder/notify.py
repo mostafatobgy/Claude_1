@@ -27,7 +27,7 @@ def story_key(story: dict) -> str:
 
 def pick_new_alerts(stories: list[dict], sent: dict[str, int], now: float) -> list[dict]:
     fresh = [s for s in stories
-             if s["tier"] == "urgent"
+             if s["tier"] == "urgent" and s.get("category") != "tech"
              and now - s["published"] <= MAX_AGE_HOURS * 3600
              and story_key(s) not in sent]
     return sorted(fresh, key=lambda s: -s["score"])[:MAX_PER_RUN]
