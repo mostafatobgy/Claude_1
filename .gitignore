@@ -1,0 +1,4 @@
+__pycache__/
+.pytest_cache/
+site/news.json
+builder/translations.json

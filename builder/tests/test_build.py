@@ -89,3 +89,15 @@ def test_build_groups_ranks_and_filters(tmp_path):
     build.build(items, tr2)
     assert tr2.calls == 0
     json.dumps(data, ensure_ascii=False)
+
+
+def test_untranslated_headlines_are_held_back(tmp_path):
+    items = feed("bbc", "en", "world", ("Parliament votes on budget after election", ""))
+    data = build.build(items, FakeTranslator(tmp_path))
+    assert data["stories"] == [] and data["held_back"] == 1
+
+
+def test_is_arabic():
+    assert build.is_arabic("البنك المركزي يرفع الفائدة 200 نقطة")
+    assert not build.is_arabic("Zelenskyy thanks Trump")
+    assert not build.is_arabic("")
