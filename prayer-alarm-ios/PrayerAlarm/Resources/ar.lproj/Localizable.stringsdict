@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>alarm_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>few</key>
+			<string>%d منبّهات</string>
+			<key>many</key>
+			<string>%d منبّهًا</string>
+			<key>one</key>
+			<string>منبّه واحد</string>
+			<key>other</key>
+			<string>%d منبّه</string>
+			<key>two</key>
+			<string>منبّهان</string>
+			<key>zero</key>
+			<string>لا منبّهات</string>
+		</dict>
+	</dict>
+	<key>stop_remaining</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>few</key>
+			<string>استيقظت — إلغاء %d منبّهات متبقية</string>
+			<key>many</key>
+			<string>استيقظت — إلغاء %d منبّهًا متبقيًا</string>
+			<key>one</key>
+			<string>استيقظت — إلغاء المنبّه المتبقي</string>
+			<key>other</key>
+			<string>استيقظت — إلغاء %d منبّه متبقٍ</string>
+			<key>two</key>
+			<string>استيقظت — إلغاء المنبّهين المتبقيين</string>
+			<key>zero</key>
+			<string>استيقظت</string>
+		</dict>
+	</dict>
+</dict>
+</plist>
