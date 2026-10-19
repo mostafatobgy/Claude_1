@@ -56,6 +56,11 @@ GitHub Actions (كل 30 دقيقة)
 
 حدود التنبيهات: 3 كحد أقصى في كل تحديث و12 في اليوم، ولا يتكرر تنبيه نفس الخبر. لتعديلها: `builder/notify.py`.
 
+## تطبيق منفصل: منبّه الصلاة
+
+في مجلد [`prayer-alarm/`](prayer-alarm/) تطبيق أندرويد مستقل لمواقيت الصلاة مع منبّه لكل صلاة ومنبّهات عادية.
+لتنزيله: **Actions ← Build Prayer Alarm APK ← Run workflow**. التفاصيل في [`prayer-alarm/README.md`](prayer-alarm/README.md).
+
 ## ملاحظات صريحة
 
 - **المجانية:** GitHub Actions مجاني بلا حدود للمستودعات العامة، وGitHub Pages مجاني. لا توجد أي اشتراكات.

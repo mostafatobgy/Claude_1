@@ -1,0 +1,11 @@
+<!-- Crescent over a green disc. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp" android:height="48dp"
+    android:viewportWidth="48" android:viewportHeight="48">
+    <path android:fillColor="#FF1B6B4A"
+        android:pathData="M24,2a22,22 0,1 0,0.01 0z" />
+    <path android:fillColor="#FFF4E3B2"
+        android:pathData="M27,10a14,14 0,1 0,9 24.7a11,11 0,1 1,0 -21.4A14,14 0,0 0,27 10z" />
+    <path android:fillColor="#FFF4E3B2"
+        android:pathData="M33,17l1.2,2.6 2.8,0.3 -2.1,1.9 0.6,2.8L33,23.2l-2.5,1.4 0.6,-2.8 -2.1,-1.9 2.8,-0.3z" />
+</vector>
