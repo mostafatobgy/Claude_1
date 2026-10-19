@@ -10,6 +10,7 @@ from fetcher import fetch_all
 from notify import notify
 from rank import classify_and_score, group_stories, tier
 from translate import Translator
+from trends import fetch_trends, group_trends
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("build")
@@ -68,14 +69,21 @@ def build(items, translator) -> dict:
     return {"updated": int(time.time()), "stories": out, "held_back": held_back}
 
 
+def build_trends(raw: list[dict], translator) -> list[dict]:
+    foreign = [x for r in raw for x in [r["term"]] + [n["title"] for n in r["news"]] if not is_arabic(x)]
+    return group_trends(raw, translator.translate_many(foreign))
+
+
 def main():
     items = asyncio.run(fetch_all())
     log.info("fetched %d articles", len(items))
     translator = Translator(CACHE)
     data = build(items, translator)
+    data["trends"] = build_trends(fetch_trends(), translator)
     translator.save()
     # Shown as a note on the GitHub Actions run page.
-    print(f"::notice::{len(data['stories'])} stories, {data['held_back']} waiting for translation, "
+    print(f"::notice::{len(data['stories'])} stories, {len(data['trends'])} trends, "
+          f"{data['held_back']} waiting for translation, "
           f"translations {translator.stats}")
     OUT.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     log.info("wrote %d stories to %s", len(data["stories"]), OUT)

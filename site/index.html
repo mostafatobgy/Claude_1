@@ -42,7 +42,7 @@ h1 { font-family: "Noto Kufi Arabic", sans-serif; font-size: 21px; margin: 0; }
 #reload.spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(-360deg); } }
 nav.tabs { display: flex; gap: 4px; padding: 0 12px; max-width: 760px; margin: 0 auto; overflow-x: auto; scrollbar-width: none; }
-nav.tabs button { flex: 1 0 auto; background: none; border: 0; color: rgb(255 255 255 / .7); font: 600 15px "Noto Kufi Arabic", sans-serif; padding: 10px 12px 12px; border-bottom: 3px solid transparent; cursor: pointer; }
+nav.tabs button { flex: 1 0 auto; background: none; border: 0; color: rgb(255 255 255 / .7); font: 600 15px "Noto Kufi Arabic", sans-serif; padding: 10px 8px 12px; border-bottom: 3px solid transparent; cursor: pointer; }
 nav.tabs button[aria-selected="true"] { color: #fff; border-bottom-color: #f3b45a; }
 main { max-width: 760px; margin: 0 auto; padding: 12px 16px 48px; }
 .filters { display: flex; gap: 8px; margin: 4px 0 14px; flex-wrap: wrap; }
@@ -69,6 +69,12 @@ article p { margin: 0 0 6px; }
 details { font-size: 14px; margin-top: 4px; }
 summary { cursor: pointer; color: var(--chip-on); }
 details a { display: block; color: var(--chip-on); text-decoration: none; padding: 3px 0; overflow-wrap: anywhere; }
+.filters[hidden] { display: none; }
+h2.sec.hot { color: var(--urgent); }
+.badge.hot { color: var(--urgent); background: var(--urgent-bg); }
+.rank { font: 700 15px "Noto Kufi Arabic", sans-serif; color: var(--ink); min-width: 1.4em; }
+.orig { display: block; font: 500 13px "Segoe UI", Tahoma, sans-serif; color: var(--muted); direction: ltr; text-align: right; }
+.tnews a { display: block; color: var(--chip-on); text-decoration: none; font-size: 14.5px; padding: 3px 0; }
 .empty, .error { text-align: center; color: var(--muted); padding: 48px 8px; }
 </style>
 </head>
@@ -83,14 +89,21 @@ details a { display: block; color: var(--chip-on); text-decoration: none; paddin
     <button role="tab" data-region="egypt" aria-selected="false">مصر</button>
     <button role="tab" data-region="region" aria-selected="false">المنطقة</button>
     <button role="tab" data-region="world" aria-selected="false">العالم</button>
+    <button role="tab" data-tab="trends" aria-selected="false">🔥 الترند</button>
   </nav>
 </header>
 <main>
-  <div class="filters">
+  <div class="filters" id="news-filters">
     <button data-cat="" aria-pressed="true">الكل</button>
     <button data-cat="politics" aria-pressed="false">سياسة</button>
     <button data-cat="economy" aria-pressed="false">اقتصاد</button>
     <button data-cat="tech" aria-pressed="false">تكنولوجيا</button>
+  </div>
+  <div class="filters" id="trend-filters" hidden>
+    <button data-tregion="" aria-pressed="true">الكل</button>
+    <button data-tregion="egypt" aria-pressed="false">مصر</button>
+    <button data-tregion="region" aria-pressed="false">المنطقة</button>
+    <button data-tregion="world" aria-pressed="false">العالم</button>
   </div>
   <div id="list"></div>
 </main>
@@ -98,7 +111,7 @@ details a { display: block; color: var(--chip-on); text-decoration: none; paddin
 const REGION = { egypt: "مصر", region: "المنطقة", world: "العالم" };
 const CAT = { politics: "سياسة", economy: "اقتصاد", tech: "تكنولوجيا" };
 const TIER = { urgent: "الأهم", important: "مهم", normal: "للمتابعة" };
-const view = { region: "", category: "" };
+const view = { tab: "news", region: "", category: "", tregion: "" };
 try { Object.assign(view, JSON.parse(localStorage.getItem("view") || "{}")); } catch {}
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -139,6 +152,36 @@ function render(data) {
   document.getElementById("updated").textContent = data.updated ? `آخر تحديث ${ago(data.updated)}` : "";
 }
 
+const fmtTraffic = n => n >= 1e6 ? `${Math.round(n / 1e6)} مليون+` : n >= 1000 ? `${Math.round(n / 1000)} ألف+` : `${n}+`;
+
+function trendCard(t, rank) {
+  const links = t.news.map(n => `<a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}${n.source ? ` — ${esc(n.source)}` : ""} ↗</a>`).join("");
+  const original = t.term_ar !== t.term ? `<span class="orig">${esc(t.term)}</span>` : "";
+  return `<article class="trend">
+    <div class="meta">
+      <span class="rank">${rank}</span>
+      <span class="badge hot">🔥 ${fmtTraffic(t.traffic)} بحث</span>
+      <span>${t.countries.map(esc).join(" · ")}</span>
+      ${t.started ? `<span>${ago(t.started)}</span>` : ""}
+    </div>
+    <h3>${esc(t.term_ar)} ${original}</h3>
+    ${links ? `<div class="tnews">${links}</div>` : ""}
+  </article>`;
+}
+
+function renderTrends() {
+  const list = document.getElementById("list");
+  const trends = (data.trends || []).filter(t => !view.tregion || t.region === view.tregion);
+  if (!trends.length) { list.innerHTML = `<div class="empty">لا توجد ترندات متاحة الآن.</div>`; return; }
+  let html = "";
+  for (const r of ["egypt", "region", "world"]) {
+    const group = trends.filter(t => t.region === r);
+    if (group.length) html += `<h2 class="sec hot">ترند ${REGION[r]}</h2>` + group.map((t, i) => trendCard(t, i + 1)).join("");
+  }
+  list.innerHTML = html;
+  document.getElementById("updated").textContent = data.updated ? `آخر تحديث ${ago(data.updated)}` : "";
+}
+
 let data = null;
 
 async function load() {
@@ -156,6 +199,7 @@ async function load() {
 }
 
 function show() {
+  if (view.tab === "trends") return renderTrends();
   render({
     updated: data.updated,
     stories: data.stories.filter(s => (!view.region || s.region === view.region) && (!view.category || s.category === view.category)),
@@ -163,12 +207,19 @@ function show() {
 }
 
 function sync() {
-  document.querySelectorAll("[data-region]").forEach(b => b.setAttribute("aria-selected", b.dataset.region === view.region));
+  const trends = view.tab === "trends";
+  document.querySelectorAll("[data-region]").forEach(b => b.setAttribute("aria-selected", !trends && b.dataset.region === view.region));
+  document.querySelector("[data-tab=trends]").setAttribute("aria-selected", trends);
+  document.getElementById("news-filters").hidden = trends;
+  document.getElementById("trend-filters").hidden = !trends;
   document.querySelectorAll("[data-cat]").forEach(b => b.setAttribute("aria-pressed", b.dataset.cat === view.category));
+  document.querySelectorAll("[data-tregion]").forEach(b => b.setAttribute("aria-pressed", b.dataset.tregion === view.tregion));
   try { localStorage.setItem("view", JSON.stringify(view)); } catch {}
   data ? show() : load();
 }
-document.querySelectorAll("[data-region]").forEach(b => b.onclick = () => { view.region = b.dataset.region; sync(); });
+document.querySelectorAll("[data-region]").forEach(b => b.onclick = () => { view.tab = "news"; view.region = b.dataset.region; sync(); });
+document.querySelector("[data-tab=trends]").onclick = () => { view.tab = "trends"; sync(); };
+document.querySelectorAll("[data-tregion]").forEach(b => b.onclick = () => { view.tregion = b.dataset.tregion; sync(); });
 document.querySelectorAll("[data-cat]").forEach(b => b.onclick = () => { view.category = b.dataset.cat; sync(); });
 document.getElementById("reload").onclick = load;
 document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });

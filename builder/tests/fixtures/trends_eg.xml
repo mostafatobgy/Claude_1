@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:ht="https://trends.google.com/trending/rss" version="2.0">
+<channel><title>Daily Search Trends</title>
+<item>
+  <title>الأهلي</title>
+  <ht:approx_traffic>200K+</ht:approx_traffic>
+  <pubDate>Mon, 19 Oct 2026 08:40:00 +0000</pubDate>
+  <ht:news_item><ht:news_item_title>&lt;b&gt;الأهلي&lt;/b&gt; يفوز في الدوري</ht:news_item_title><ht:news_item_url>https://a.test/1</ht:news_item_url><ht:news_item_source>اليوم السابع</ht:news_item_source></ht:news_item>
+  <ht:news_item><ht:news_item_title>مباراة الأهلي اليوم</ht:news_item_title><ht:news_item_url>https://a.test/2</ht:news_item_url><ht:news_item_source>مصراوي</ht:news_item_source></ht:news_item>
+</item>
+<item>
+  <title>سعر الدولار</title>
+  <ht:approx_traffic>2,000+</ht:approx_traffic>
+  <pubDate>Mon, 19 Oct 2026 07:00:00 +0000</pubDate>
+</item>
+</channel></rss>
