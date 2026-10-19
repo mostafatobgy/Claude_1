@@ -118,3 +118,11 @@ def test_tech_category_and_tech_feed_filtering(tmp_path):
     assert by_title["الذكاء الاصطناعي يدخل المدارس المصرية"]["region"] == "egypt"
     assert not any("عروض" in t for t in by_title), "shopping posts from tech feeds are dropped"
     assert by_title["اتصال هاتفي بين الرئيس السيسي ونظيره الفرنسي لبحث مفاوضات غزة"]["category"] == "politics"
+
+
+def test_source_section_does_not_override_clear_keywords(tmp_path):
+    items = (feed("aitnews", "ar", "world", ("وزير: صادرات مصر غير النفطية تصل إلى 48 مليار دولار", ""), category="tech")
+             + feed("bbc", "ar", "world", ("مصرف الإمارات المركزي يخفض الفائدة", "")))
+    by_title = {s["title"]: s for s in build.build(items, FakeTranslator(tmp_path))["stories"]}
+    assert by_title["وزير: صادرات مصر غير النفطية تصل إلى 48 مليار دولار"]["category"] == "economy"
+    assert by_title["مصرف الإمارات المركزي يخفض الفائدة"]["region"] == "region", "مصرف (bank) is not مصر"

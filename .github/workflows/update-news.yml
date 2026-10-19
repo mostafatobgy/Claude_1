@@ -1,8 +1,10 @@
 name: Update news
 
 on:
+  # Main timer: each run starts the next one ~30 minutes later (job "next" below), because GitHub's
+  # own schedule is often hours late. The schedule stays as a backup that restarts the chain.
   schedule:
-    - cron: "7,37 * * * *"
+    - cron: "7 */2 * * *"
   workflow_dispatch:
   push:
     branches: [main]
@@ -11,10 +13,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: false
+  actions: write   # lets the "next" job start the following run
 
 jobs:
   build:
@@ -48,9 +47,28 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    concurrency:          # only one deploy at a time; the 28-minute wait below doesn't block others
+      group: pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  next:
+    needs: deploy
+    if: always() && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - run: sleep 1680   # 28 minutes
+      - name: Start the next update (unless a newer run already exists)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          newer=$(gh run list --workflow update-news.yml --limit 20 --json databaseId,status \
+            -q "[.[] | select(.status != \"completed\" and .databaseId > ${{ github.run_id }})] | length")
+          if [ "$newer" = "0" ]; then gh workflow run update-news.yml --ref main; else echo "newer run exists"; fi

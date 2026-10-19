@@ -26,7 +26,7 @@ POLITICS = {
     "parliament": 1.5, "summit": 2, "agreement": 1.5, "talks": 1.5, "nuclear": 2.5, "gaza": 2.5, "israel": 2,
     "iran": 2, "sudan": 2, "libya": 1.5, "ethiopia": 2, "nile": 2.5, "dam": 1.5, "government": 1,
     "military": 1.5, "protest": 1.5, "un": 1, "security council": 2, "nato": 1.5, "diplomat": 1,
-    "حرب": 3, "وقف إطلاق النار": 3, "الهدنة": 3, "غزو": 3, "غارة": 2.5, "غارات": 2.5, "صاروخ": 2.5, "هجوم": 2,
+    "حرب": 3, "وقف إطلاق النار": 3, "الهدنة": 3, "غزو": 3, "غارة": 2.5, "غارات": 2.5, "صاروخ": 2.5, "صواريخ": 2.5, "هجوم": 2,
     "قتلى": 2, "مقتل": 2, "انقلاب": 3, "عقوبات": 2, "انتخابات": 2, "الرئيس": 1.5, "رئيس الوزراء": 1.5,
     "وزير": 1, "البرلمان": 1.5, "مجلس النواب": 1.5, "قمة": 2, "اتفاق": 1.5, "مفاوضات": 1.5, "محادثات": 1.5,
     "نووي": 2.5, "غزة": 2.5, "إسرائيل": 2, "إيران": 2, "السودان": 2, "ليبيا": 1.5, "إثيوبيا": 2, "النيل": 2.5,
@@ -100,17 +100,28 @@ def normalize_tokens(text: str) -> set[str]:
 _PATTERNS: dict[str, re.Pattern] = {}
 
 
+_AR = "\u0600-\u06FF"
+# Arabic words carry attached prefixes (و ف ب ل ك ال) and endings (ي ية ات ...). Allow those, but not
+# arbitrary letters, so "مصر" matches "المصرية" and "لمصر" but not "مصرف" (bank) or "مصرح".
+_AR_PREFIX = "(?:[وف]?[بلك]?(?:ال|ل)?)"
+_AR_SUFFIX = "(?:ة|ي|ية|يه|يين|يون|ين|ون|ات|ان|ا|ه|ها|هم|تها|يا)?"
+
+
 def _matches(text: str, words) -> list[str]:
     """English keywords match at a word start ("war" must not hit "award"), and short ones must be the
-    whole word ("dam" must not hit "damage"); Arabic ones match anywhere, to allow attached prefixes."""
+    whole word ("dam" must not hit "damage"); Arabic ones must be a whole word give or take affixes."""
     found = []
     for w in words:
-        if w.isascii():
-            end = r"s?\b" if len(w) <= 4 else ""
-            pat = _PATTERNS.get(w) or _PATTERNS.setdefault(w, re.compile(r"\b" + re.escape(w) + end))
-            if pat.search(text):
-                found.append(w)
-        elif w in text:
+        pat = _PATTERNS.get(w)
+        if pat is None:
+            if w.isascii():
+                end = r"s?\b" if len(w) <= 4 else ""
+                pat = re.compile(r"\b" + re.escape(w) + end)
+            else:
+                core = re.escape(w[2:] if w.startswith("ال") and len(w) > 4 else w)
+                pat = re.compile(f"(?<![{_AR}]){_AR_PREFIX}{core}{_AR_SUFFIX}(?![{_AR}])")
+            _PATTERNS[w] = pat
+        if pat.search(text):
             found.append(w)
     return found
 
@@ -156,7 +167,8 @@ def classify_and_score(story: Story, now: float | None = None) -> bool:
     if not econ and not pol and not tech and not feed_cat:
         return False
     weights = {"politics": sum(pol.values()), "economy": sum(econ.values()), "tech": sum(tech.values())}  # ties -> first
-    if feed_cat and (weights[feed_cat] > 0 or not any(weights.values())):
+    # A source's own section decides only when its keywords agree (a tech site's export-figures story is economy).
+    if feed_cat and (weights[feed_cat] >= max(weights.values()) or not any(weights.values())):
         story.category = feed_cat
     else:
         story.category = max(weights, key=weights.get)
