@@ -1,0 +1,444 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		00186B32C6FE05DB80506D89 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30F578115FB1A310D095CB68 /* Models.swift */; };
+		140A9FB918841151F6FD877F /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = 632C90A8B45DB3D3FB28243E /* Store.swift */; };
+		1859F266BB30346EAAAD2654 /* PrayerTimes.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3FBC0E29C9EA4CEE6EB1CD5 /* PrayerTimes.swift */; };
+		1C958746EB3F571BAC86CC62 /* AlarmsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C95F0ACE1EA163C819F0ED91 /* AlarmsViewController.swift */; };
+		1DB102F7AD4D3C1366F26705 /* RingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D71BA8736B98D18CE10207B /* RingViewController.swift */; };
+		35293331DB4AFA457FADDCE4 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0B3D66CCE10299B0F4E6FC9 /* SceneDelegate.swift */; };
+		3F2CA80251BF85825393D3D3 /* Planner.swift in Sources */ = {isa = PBXBuildFile; fileRef = B81CDC9BD551D3866B3206F5 /* Planner.swift */; };
+		6049E80B9EFF03C2CB05DA5E /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = D28FE79BA2545EB19AFD2C91 /* InfoPlist.strings */; };
+		7A1D369DBEABF691ABEB884A /* BackgroundServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83E31ECCE4ED8453A47918D6 /* BackgroundServices.swift */; };
+		8393A7D091BF9FE65061791D /* PrayerTimesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14A45F28DEC072074538D4CF /* PrayerTimesViewController.swift */; };
+		924003C089C7032F82EFEDAB /* Localizable.stringsdict in Resources */ = {isa = PBXBuildFile; fileRef = C34DFF7DE4B62FBF10930692 /* Localizable.stringsdict */; };
+		96E721B48CCA1500FDEDF4D1 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = C1C7FA64F554E3ACE9300A37 /* LaunchScreen.storyboard */; };
+		9807A4CE8C8E10164C766679 /* NotificationHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8085F3C8E70EFB776EA9F315 /* NotificationHandler.swift */; };
+		AAC5486BD58E08B68BAE6C9E /* SettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8900FB22A69873E802AE954C /* SettingsViewController.swift */; };
+		BE85FF2E6894E6B71371DC36 /* MainTabBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 347096A4B4619D88213F4898 /* MainTabBarController.swift */; };
+		BF5F267673B72293C09C0B02 /* AlarmScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCE88E135FC8CD09BC32E708 /* AlarmScheduler.swift */; };
+		D00B9B536A5BE551449B7B99 /* SoundLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = B467D602174552434B90CCC8 /* SoundLibrary.swift */; };
+		D56CD9D2BD47E7D3CC5006FF /* Format.swift in Sources */ = {isa = PBXBuildFile; fileRef = 699D572C398B3E6373EF73EB /* Format.swift */; };
+		D6910C8ECABB38AD320443CA /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 1E93B9D3F3CB8263CBB535A1 /* Localizable.strings */; };
+		E2CE859C235B6281A6C90A1D /* alarm.wav in Resources */ = {isa = PBXBuildFile; fileRef = 3AB02735983FBDBF30562683 /* alarm.wav */; };
+		E5B8AA3BEBD8D31994749244 /* RingingAlarm.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB6763D84028D990A31CF4B9 /* RingingAlarm.swift */; };
+		F15B3762C1F2A67659B17D70 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE28346D4E3402B1BC315ED /* Components.swift */; };
+		F17BC0E68FD3BC916BBA1FEE /* GroupEditorViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C4386AD2EA52DC375A824FE /* GroupEditorViewController.swift */; };
+		F8E1285338D85139579740CA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D40126822D0756BB2C22C0E3 /* Assets.xcassets */; };
+		FCBF330ACE3D1B7052450C41 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2689D459300F0BBCC904870 /* AppDelegate.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		14A45F28DEC072074538D4CF /* PrayerTimesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrayerTimesViewController.swift; sourceTree = "<group>"; };
+		260AF342EC7BE81782878575 /* ar */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ar; path = ar.lproj/Localizable.strings; sourceTree = "<group>"; };
+		30F578115FB1A310D095CB68 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		347096A4B4619D88213F4898 /* MainTabBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabBarController.swift; sourceTree = "<group>"; };
+		3AB02735983FBDBF30562683 /* alarm.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = alarm.wav; sourceTree = "<group>"; };
+		4C4386AD2EA52DC375A824FE /* GroupEditorViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupEditorViewController.swift; sourceTree = "<group>"; };
+		4D71BA8736B98D18CE10207B /* RingViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingViewController.swift; sourceTree = "<group>"; };
+		632C90A8B45DB3D3FB28243E /* Store.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Store.swift; sourceTree = "<group>"; };
+		699D572C398B3E6373EF73EB /* Format.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Format.swift; sourceTree = "<group>"; };
+		722AA81D74065A98D0B1C948 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		746D6508F7DAC80E26075052 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		7EE28346D4E3402B1BC315ED /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
+		8085F3C8E70EFB776EA9F315 /* NotificationHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationHandler.swift; sourceTree = "<group>"; };
+		83E31ECCE4ED8453A47918D6 /* BackgroundServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundServices.swift; sourceTree = "<group>"; };
+		8900FB22A69873E802AE954C /* SettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewController.swift; sourceTree = "<group>"; };
+		B467D602174552434B90CCC8 /* SoundLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundLibrary.swift; sourceTree = "<group>"; };
+		B81CDC9BD551D3866B3206F5 /* Planner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Planner.swift; sourceTree = "<group>"; };
+		B8840B02629261DEACD32207 /* ar */ = {isa = PBXFileReference; lastKnownFileType = text.plist.stringsdict; name = ar; path = ar.lproj/Localizable.stringsdict; sourceTree = "<group>"; };
+		C0B3D66CCE10299B0F4E6FC9 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+		C1C7FA64F554E3ACE9300A37 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		C95F0ACE1EA163C819F0ED91 /* AlarmsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlarmsViewController.swift; sourceTree = "<group>"; };
+		CCE88E135FC8CD09BC32E708 /* AlarmScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlarmScheduler.swift; sourceTree = "<group>"; };
+		D3FBC0E29C9EA4CEE6EB1CD5 /* PrayerTimes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrayerTimes.swift; sourceTree = "<group>"; };
+		D40126822D0756BB2C22C0E3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		E2689D459300F0BBCC904870 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		E34671B84360ABBFBBB0C5D2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		EA962017645F1F6E26A79753 /* ar */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ar; path = ar.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		EB6763D84028D990A31CF4B9 /* RingingAlarm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingingAlarm.swift; sourceTree = "<group>"; };
+		ECCC89CB8E7303BE0C693365 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.stringsdict; name = en; path = en.lproj/Localizable.stringsdict; sourceTree = "<group>"; };
+		F5BF48AA40CAD7891EB709FC /* PrayerAlarm.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PrayerAlarm.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		DAF6AA633395B1B76148E35B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		6CB77480E0F0214B7AC1764B /* App */ = {
+			isa = PBXGroup;
+			children = (
+				E2689D459300F0BBCC904870 /* AppDelegate.swift */,
+				C0B3D66CCE10299B0F4E6FC9 /* SceneDelegate.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		83791AAA3ABE9C740744D1DA /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				D3FBC0E29C9EA4CEE6EB1CD5 /* PrayerTimes.swift */,
+				30F578115FB1A310D095CB68 /* Models.swift */,
+				B81CDC9BD551D3866B3206F5 /* Planner.swift */,
+				632C90A8B45DB3D3FB28243E /* Store.swift */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		3B2A0237CB95921853B9D204 /* Alarm */ = {
+			isa = PBXGroup;
+			children = (
+				CCE88E135FC8CD09BC32E708 /* AlarmScheduler.swift */,
+				8085F3C8E70EFB776EA9F315 /* NotificationHandler.swift */,
+				B467D602174552434B90CCC8 /* SoundLibrary.swift */,
+				EB6763D84028D990A31CF4B9 /* RingingAlarm.swift */,
+				83E31ECCE4ED8453A47918D6 /* BackgroundServices.swift */,
+			);
+			path = Alarm;
+			sourceTree = "<group>";
+		};
+		5A90CB23A10D7ADC74BEF5AB /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				699D572C398B3E6373EF73EB /* Format.swift */,
+				7EE28346D4E3402B1BC315ED /* Components.swift */,
+				347096A4B4619D88213F4898 /* MainTabBarController.swift */,
+				14A45F28DEC072074538D4CF /* PrayerTimesViewController.swift */,
+				C95F0ACE1EA163C819F0ED91 /* AlarmsViewController.swift */,
+				4C4386AD2EA52DC375A824FE /* GroupEditorViewController.swift */,
+				8900FB22A69873E802AE954C /* SettingsViewController.swift */,
+				4D71BA8736B98D18CE10207B /* RingViewController.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		0ABC3EB6DE2FF40948B036F0 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				D40126822D0756BB2C22C0E3 /* Assets.xcassets */,
+				C1C7FA64F554E3ACE9300A37 /* LaunchScreen.storyboard */,
+				3AB02735983FBDBF30562683 /* alarm.wav */,
+				1E93B9D3F3CB8263CBB535A1 /* Localizable.strings */,
+				C34DFF7DE4B62FBF10930692 /* Localizable.stringsdict */,
+				D28FE79BA2545EB19AFD2C91 /* InfoPlist.strings */,
+				E34671B84360ABBFBBB0C5D2 /* Info.plist */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		F9984641EED8C95BE979A0BB /* PrayerAlarm */ = {
+			isa = PBXGroup;
+			children = (
+				6CB77480E0F0214B7AC1764B /* App */,
+				83791AAA3ABE9C740744D1DA /* Core */,
+				3B2A0237CB95921853B9D204 /* Alarm */,
+				5A90CB23A10D7ADC74BEF5AB /* UI */,
+				0ABC3EB6DE2FF40948B036F0 /* Resources */,
+			);
+			path = PrayerAlarm;
+			sourceTree = "<group>";
+		};
+		FCE477D1185A183028559B4D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F5BF48AA40CAD7891EB709FC /* PrayerAlarm.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		3D8222E143ACB5B89604F597 = {
+			isa = PBXGroup;
+			children = (
+				F9984641EED8C95BE979A0BB /* PrayerAlarm */,
+				FCE477D1185A183028559B4D /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		42AEFBAE01D2DFD981F7DA7D /* PrayerAlarm */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EAF116FE40D68E4ABB26094B /* Build configuration list for PBXNativeTarget "PrayerAlarm" */;
+			buildPhases = (
+				0F78FE532035D122ED352DBA /* Sources */,
+				DAF6AA633395B1B76148E35B /* Frameworks */,
+				943E4BBD9B51C81965501BA3 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PrayerAlarm;
+			productName = PrayerAlarm;
+			productReference = F5BF48AA40CAD7891EB709FC /* PrayerAlarm.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		46F86FAA6BBF9AC94A7E4595 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					42AEFBAE01D2DFD981F7DA7D = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = ADD3EDE971004D3249A2A24C /* Build configuration list for PBXProject "PrayerAlarm" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = ar;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				ar,
+				en,
+				Base,
+			);
+			mainGroup = 3D8222E143ACB5B89604F597;
+			productRefGroup = FCE477D1185A183028559B4D /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				42AEFBAE01D2DFD981F7DA7D /* PrayerAlarm */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		943E4BBD9B51C81965501BA3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F8E1285338D85139579740CA /* Assets.xcassets in Resources */,
+				96E721B48CCA1500FDEDF4D1 /* LaunchScreen.storyboard in Resources */,
+				E2CE859C235B6281A6C90A1D /* alarm.wav in Resources */,
+				D6910C8ECABB38AD320443CA /* Localizable.strings in Resources */,
+				924003C089C7032F82EFEDAB /* Localizable.stringsdict in Resources */,
+				6049E80B9EFF03C2CB05DA5E /* InfoPlist.strings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		0F78FE532035D122ED352DBA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1859F266BB30346EAAAD2654 /* PrayerTimes.swift in Sources */,
+				00186B32C6FE05DB80506D89 /* Models.swift in Sources */,
+				3F2CA80251BF85825393D3D3 /* Planner.swift in Sources */,
+				140A9FB918841151F6FD877F /* Store.swift in Sources */,
+				FCBF330ACE3D1B7052450C41 /* AppDelegate.swift in Sources */,
+				35293331DB4AFA457FADDCE4 /* SceneDelegate.swift in Sources */,
+				BF5F267673B72293C09C0B02 /* AlarmScheduler.swift in Sources */,
+				9807A4CE8C8E10164C766679 /* NotificationHandler.swift in Sources */,
+				D00B9B536A5BE551449B7B99 /* SoundLibrary.swift in Sources */,
+				E5B8AA3BEBD8D31994749244 /* RingingAlarm.swift in Sources */,
+				7A1D369DBEABF691ABEB884A /* BackgroundServices.swift in Sources */,
+				D56CD9D2BD47E7D3CC5006FF /* Format.swift in Sources */,
+				F15B3762C1F2A67659B17D70 /* Components.swift in Sources */,
+				BE85FF2E6894E6B71371DC36 /* MainTabBarController.swift in Sources */,
+				8393A7D091BF9FE65061791D /* PrayerTimesViewController.swift in Sources */,
+				1C958746EB3F571BAC86CC62 /* AlarmsViewController.swift in Sources */,
+				F17BC0E68FD3BC916BBA1FEE /* GroupEditorViewController.swift in Sources */,
+				AAC5486BD58E08B68BAE6C9E /* SettingsViewController.swift in Sources */,
+				1DB102F7AD4D3C1366F26705 /* RingViewController.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		1E93B9D3F3CB8263CBB535A1 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				260AF342EC7BE81782878575 /* ar */,
+				722AA81D74065A98D0B1C948 /* en */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+		C34DFF7DE4B62FBF10930692 /* Localizable.stringsdict */ = {
+			isa = PBXVariantGroup;
+			children = (
+				B8840B02629261DEACD32207 /* ar */,
+				ECCC89CB8E7303BE0C693365 /* en */,
+			);
+			name = Localizable.stringsdict;
+			sourceTree = "<group>";
+		};
+		D28FE79BA2545EB19AFD2C91 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				EA962017645F1F6E26A79753 /* ar */,
+				746D6508F7DAC80E26075052 /* en */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		2D53B50AE2273FABAAF8B8FA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		D4B2141B77146EF47E948847 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		FA7C752E798F561D7D156D98 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = PrayerAlarm/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.prayeralarm;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		22F75101C717335ACF4089A0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = PrayerAlarm/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.prayeralarm;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		ADD3EDE971004D3249A2A24C /* Build configuration list for PBXProject "PrayerAlarm" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2D53B50AE2273FABAAF8B8FA /* Debug */,
+				D4B2141B77146EF47E948847 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		EAF116FE40D68E4ABB26094B /* Build configuration list for PBXNativeTarget "PrayerAlarm" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FA7C752E798F561D7D156D98 /* Debug */,
+				22F75101C717335ACF4089A0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 46F86FAA6BBF9AC94A7E4595 /* Project object */;
+}

@@ -1,0 +1,24 @@
+name: Build Prayer Alarm iOS
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "prayer-alarm-ios/**"
+      - ".github/workflows/build-prayer-alarm-ios.yml"
+
+jobs:
+  build:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: prayer-alarm-ios
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test prayer times and alarm rules
+        run: swift test
+      - name: Build the app for the iOS simulator
+        run: |
+          xcodebuild -project PrayerAlarm.xcodeproj -target PrayerAlarm \
+            -sdk iphonesimulator -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO build
