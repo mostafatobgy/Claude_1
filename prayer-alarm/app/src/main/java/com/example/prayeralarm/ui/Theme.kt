@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import com.example.prayeralarm.R
+import com.example.prayeralarm.data.ThemeMode
 import com.example.prayeralarm.prayer.AsrMethod
 import com.example.prayeralarm.prayer.CalculationMethod
 import com.example.prayeralarm.prayer.Prayer
@@ -20,8 +21,12 @@ import com.example.prayeralarm.prayer.Prayer
 private val Green = Color(0xFF1B6B4A)
 
 @Composable
-fun AppTheme(content: @Composable () -> Unit) {
-    val dark = isSystemInDarkTheme()
+fun AppTheme(mode: ThemeMode = ThemeMode.SYSTEM, content: @Composable () -> Unit) {
+    val dark = when (mode) {
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
     val context = LocalContext.current
     val colors = when {
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
@@ -58,4 +63,11 @@ fun CalculationMethod.nameRes(): Int = when (this) {
 fun AsrMethod.nameRes(): Int = when (this) {
     AsrMethod.STANDARD -> R.string.asr_standard
     AsrMethod.HANAFI -> R.string.asr_hanafi
+}
+
+@StringRes
+fun ThemeMode.nameRes(): Int = when (this) {
+    ThemeMode.SYSTEM -> R.string.theme_system
+    ThemeMode.LIGHT -> R.string.theme_light
+    ThemeMode.DARK -> R.string.theme_dark
 }

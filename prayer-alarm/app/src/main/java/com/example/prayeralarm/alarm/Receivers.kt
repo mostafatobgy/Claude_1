@@ -3,35 +3,62 @@ package com.example.prayeralarm.alarm
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import com.example.prayeralarm.data.Repeat
 import com.example.prayeralarm.data.Store
 import com.example.prayeralarm.prayer.Prayer
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
-/** Fired by AlarmManager: starts ringing, then arms the next occurrence of the same alarm. */
+/** Handles alarms firing, the heads-up reminder before them, and "skip" from that reminder. */
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val kind = intent.getStringExtra(AlarmScheduler.EXTRA_KIND) ?: return
         val id = intent.getIntExtra(AlarmScheduler.EXTRA_ID, -1)
         val label = intent.getStringExtra(AlarmScheduler.EXTRA_LABEL).orEmpty()
         val trigger = intent.getLongExtra(AlarmScheduler.EXTRA_TRIGGER, System.currentTimeMillis())
-        val isPrayer = kind == AlarmScheduler.KIND_PRAYER || (kind == AlarmScheduler.KIND_SNOOZE && id == 1)
+        val sessionEnd = intent.getLongExtra(AlarmScheduler.EXTRA_SESSION_END, 0L)
+        when (intent.action) {
+            AlarmScheduler.ACTION_FIRE -> fire(context, intent, id, label, trigger, sessionEnd)
+            AlarmScheduler.ACTION_REMIND -> Notifications.showReminder(context, id, label, trigger, sessionEnd)
+            AlarmScheduler.ACTION_SKIP -> AlarmScheduler.skipSession(context, id, sessionEnd)
+        }
+    }
 
-        AlarmService.start(context, label, isPrayer)
-
-        // Look for the next occurrence after this minute so the same alarm isn't re-armed for now.
-        val from = ZonedDateTime.ofInstant(Instant.ofEpochMilli(trigger).plusSeconds(60), ZoneId.systemDefault())
+    private fun fire(context: Context, intent: Intent, id: Int, label: String, trigger: Long, sessionEnd: Long) {
+        val kind = intent.getStringExtra(AlarmScheduler.EXTRA_KIND) ?: return
         val store = Store(context)
+        // Look for the next occurrence strictly after this one.
+        val from = ZonedDateTime.ofInstant(Instant.ofEpochMilli(trigger).plusSeconds(1), ZoneId.systemDefault())
         when (kind) {
-            AlarmScheduler.KIND_CUSTOM -> {
-                val alarm = store.alarm(id) ?: return
-                if (alarm.days.isEmpty()) store.upsert(alarm.copy(enabled = false))
-                else AlarmScheduler.scheduleCustom(context, alarm, from)
+            AlarmScheduler.KIND_GROUP -> {
+                val group = store.group(id) ?: return
+                val index = intent.getIntExtra(AlarmScheduler.EXTRA_INDEX, 0)
+                val remaining = (group.count - 1 - index).coerceAtLeast(0)
+                AlarmService.start(
+                    context,
+                    RingingAlarm(label, isPrayer = false, intent.getStringExtra(AlarmScheduler.EXTRA_SOUND), id, sessionEnd, remaining),
+                )
+                context.getSystemService(android.app.NotificationManager::class.java)
+                    .cancel(AlarmScheduler.reminderNotificationId(id))
+                if (group.repeat == Repeat.ONCE && remaining == 0) {
+                    store.upsert(group.copy(enabled = false))
+                    AlarmScheduler.cancelGroup(context, id)
+                } else {
+                    AlarmScheduler.scheduleGroup(context, group, from, store)
+                }
             }
-            AlarmScheduler.KIND_PRAYER -> Prayer.entries.getOrNull(id)?.let {
-                AlarmScheduler.schedulePrayer(context, store.settings, it, from)
+            AlarmScheduler.KIND_PRAYER -> {
+                AlarmService.start(context, RingingAlarm(label, isPrayer = true))
+                Prayer.entries.getOrNull(id)?.let { AlarmScheduler.schedulePrayer(context, store.settings, it, from) }
             }
+            AlarmScheduler.KIND_SNOOZE -> AlarmService.start(
+                context,
+                RingingAlarm(
+                    label,
+                    isPrayer = intent.getBooleanExtra(AlarmScheduler.EXTRA_IS_PRAYER, false),
+                    soundUri = intent.getStringExtra(AlarmScheduler.EXTRA_SOUND),
+                ),
+            )
         }
     }
 }

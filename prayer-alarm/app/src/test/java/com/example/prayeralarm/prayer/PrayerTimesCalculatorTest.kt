@@ -1,12 +1,10 @@
 package com.example.prayeralarm.prayer
 
-import com.example.prayeralarm.data.Alarm
 import com.example.prayeralarm.data.PrayerAlarm
 import com.example.prayeralarm.data.PrayerSettings
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -70,15 +68,5 @@ class PrayerTimesCalculatorTest {
         val fajr = settings.timesFor(LocalDate.of(2025, 1, 2), zone)[Prayer.FAJR]!!
         assertEquals(fajr.minusMinutes(10), next)
         assertEquals(null, settings.nextPrayerTrigger(Prayer.DHUHR, from))
-    }
-
-    @Test
-    fun repeatingAlarmSkipsToNextSelectedDay() {
-        val zone = ZoneId.of("UTC")
-        val friday = ZonedDateTime.of(2026, 10, 16, 8, 0, 0, 0, zone)
-        val alarm = Alarm(1, 7, 30, days = setOf(DayOfWeek.MONDAY))
-        assertEquals(ZonedDateTime.of(2026, 10, 19, 7, 30, 0, 0, zone), alarm.nextTrigger(friday))
-        val once = Alarm(2, 9, 0)
-        assertEquals(ZonedDateTime.of(2026, 10, 16, 9, 0, 0, 0, zone), once.nextTrigger(friday))
     }
 }

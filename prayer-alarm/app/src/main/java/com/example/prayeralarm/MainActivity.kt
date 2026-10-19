@@ -5,6 +5,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.prayeralarm.alarm.AlarmScheduler
 import com.example.prayeralarm.ui.AppTheme
 import com.example.prayeralarm.ui.MainScreen
@@ -15,7 +17,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent { AppTheme { MainScreen(viewModel) } }
+        setContent {
+            val appSettings by viewModel.appSettings.collectAsStateWithLifecycle()
+            AppTheme(appSettings.theme) { MainScreen(viewModel) }
+        }
     }
 
     override fun onResume() {

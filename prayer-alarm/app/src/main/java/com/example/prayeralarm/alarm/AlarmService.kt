@@ -2,8 +2,6 @@ package com.example.prayeralarm.alarm
 
 import android.annotation.SuppressLint
 import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
@@ -24,10 +22,23 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.example.prayeralarm.R
+import com.example.prayeralarm.data.AppSettings
+import com.example.prayeralarm.data.Store
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-data class RingingAlarm(val label: String, val isPrayer: Boolean)
+/**
+ * What is ringing. [groupId], [sessionEnd] and [remaining] describe the rest of an alarm group,
+ * so the ring screen can offer "I'm awake, stop the rest".
+ */
+data class RingingAlarm(
+    val label: String,
+    val isPrayer: Boolean,
+    val soundUri: String? = null,
+    val groupId: Int = -1,
+    val sessionEnd: Long = 0L,
+    val remaining: Int = 0,
+)
 
 /** Foreground service that plays the alarm sound until dismissed, snoozed, or it times out. */
 class AlarmService : Service() {
@@ -35,6 +46,16 @@ class AlarmService : Service() {
     private var vibrator: Vibrator? = null
     private val handler = Handler(Looper.getMainLooper())
     private val autoStop = Runnable { stopRinging() }
+    private var volume = 1f
+    private val volumeStep = object : Runnable {
+        override fun run() {
+            val p = player ?: return
+            volume = (volume + rampIncrement).coerceAtMost(1f)
+            runCatching { p.setVolume(volume, volume) }
+            if (volume < 1f) handler.postDelayed(this, RAMP_TICK_MILLIS)
+        }
+    }
+    private var rampIncrement = 1f
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -42,41 +63,68 @@ class AlarmService : Service() {
         when (intent?.action) {
             ACTION_DISMISS -> stopRinging()
             ACTION_SNOOZE -> {
-                _ringing.value?.let { AlarmScheduler.scheduleSnooze(this, it.label, it.isPrayer, SNOOZE_MINUTES) }
+                _ringing.value?.let { AlarmScheduler.scheduleSnooze(this, it, Store(this).appSettings.snoozeMinutes) }
                 stopRinging()
             }
-            else -> startRinging(
-                RingingAlarm(
-                    intent?.getStringExtra(AlarmScheduler.EXTRA_LABEL).orEmpty(),
-                    intent?.getBooleanExtra(EXTRA_IS_PRAYER, false) ?: false,
+            ACTION_STOP_GROUP -> {
+                _ringing.value?.takeIf { it.groupId >= 0 }?.let {
+                    AlarmScheduler.skipSession(this, it.groupId, it.sessionEnd)
+                }
+                stopRinging()
+            }
+            else -> {
+                if (intent == null) {
+                    stopSelf()
+                    return START_NOT_STICKY
+                }
+                startRinging(
+                    RingingAlarm(
+                        label = intent.getStringExtra(AlarmScheduler.EXTRA_LABEL).orEmpty(),
+                        isPrayer = intent.getBooleanExtra(AlarmScheduler.EXTRA_IS_PRAYER, false),
+                        soundUri = intent.getStringExtra(AlarmScheduler.EXTRA_SOUND),
+                        groupId = intent.getIntExtra(AlarmScheduler.EXTRA_ID, -1),
+                        sessionEnd = intent.getLongExtra(AlarmScheduler.EXTRA_SESSION_END, 0L),
+                        remaining = intent.getIntExtra(EXTRA_REMAINING, 0),
+                    )
                 )
-            )
+            }
         }
         return START_NOT_STICKY
     }
 
     private fun startRinging(alarm: RingingAlarm) {
+        val settings = Store(this).appSettings
         _ringing.value = alarm
-        ensureChannel(this)
+        Notifications.ensureChannels(this)
         ServiceCompat.startForeground(
             this, NOTIFICATION_ID, buildNotification(alarm),
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK else 0,
         )
-        playSound(alarm.isPrayer)
-        vibrate()
+        playSound(alarm, settings)
+        if (settings.vibrate) vibrate() else vibrator?.cancel()
         handler.removeCallbacks(autoStop)
-        handler.postDelayed(autoStop, AUTO_STOP_MILLIS)
+        handler.postDelayed(autoStop, settings.ringMinutes * 60_000L)
     }
 
     @SuppressLint("DiscouragedApi")
-    private fun playSound(isPrayer: Boolean) {
+    private fun playSound(alarm: RingingAlarm, settings: AppSettings) {
         releasePlayer()
-        // Drop an adhan.mp3 into res/raw to use it for prayer alarms; otherwise the phone's alarm tone plays.
-        val adhanId = if (isPrayer) resources.getIdentifier("adhan", "raw", packageName) else 0
-        val adhan = if (adhanId != 0) Uri.parse("android.resource://$packageName/$adhanId") else null
-        val fallback = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+        val systemAlarm = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
             ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-        for (uri in listOfNotNull(adhan, fallback)) {
+        // Candidates in order of preference, each with whether it should repeat.
+        val candidates = buildList {
+            alarm.soundUri?.let { add(Uri.parse(it) to !alarm.isPrayer) }
+            if (alarm.isPrayer) {
+                settings.prayerSoundUri?.let { add(Uri.parse(it) to false) }
+                // An adhan.mp3 in res/raw is used when no adhan file was picked in settings.
+                val adhanId = resources.getIdentifier("adhan", "raw", packageName)
+                if (adhanId != 0) add(Uri.parse("android.resource://$packageName/$adhanId") to false)
+            } else {
+                settings.alarmSoundUri?.let { add(Uri.parse(it) to true) }
+            }
+            systemAlarm?.let { add(it to true) }
+        }
+        for ((uri, loop) in candidates) {
             try {
                 player = MediaPlayer().apply {
                     setAudioAttributes(
@@ -86,17 +134,30 @@ class AlarmService : Service() {
                             .build()
                     )
                     setDataSource(this@AlarmService, uri)
-                    // The adhan plays once; the alarm tone repeats until dismissed.
-                    isLooping = uri != adhan
-                    if (uri == adhan) setOnCompletionListener { stopRinging() }
+                    isLooping = loop
+                    if (!loop) setOnCompletionListener { stopRinging() }
                     prepare()
-                    start()
                 }
+                startVolumeRamp(settings.ascendingSeconds)
+                player?.start()
                 return
             } catch (e: Exception) {
                 releasePlayer()
             }
         }
+    }
+
+    private fun startVolumeRamp(seconds: Int) {
+        handler.removeCallbacks(volumeStep)
+        if (seconds <= 0) {
+            volume = 1f
+            player?.setVolume(1f, 1f)
+            return
+        }
+        volume = MIN_VOLUME
+        rampIncrement = (1f - MIN_VOLUME) / (seconds * 1000f / RAMP_TICK_MILLIS)
+        player?.setVolume(volume, volume)
+        handler.postDelayed(volumeStep, RAMP_TICK_MILLIS)
     }
 
     private fun vibrate() {
@@ -111,6 +172,7 @@ class AlarmService : Service() {
     }
 
     private fun releasePlayer() {
+        handler.removeCallbacks(volumeStep)
         player?.release()
         player = null
     }
@@ -139,7 +201,7 @@ class AlarmService : Service() {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_USER_ACTION),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        return NotificationCompat.Builder(this, Notifications.ALARM_CHANNEL)
             .setSmallIcon(R.drawable.ic_alarm)
             .setContentTitle(getString(if (alarm.isPrayer) R.string.prayer_time else R.string.alarm))
             .setContentText(alarm.label)
@@ -157,21 +219,25 @@ class AlarmService : Service() {
     companion object {
         const val ACTION_DISMISS = "com.example.prayeralarm.DISMISS"
         const val ACTION_SNOOZE = "com.example.prayeralarm.SNOOZE"
-        private const val EXTRA_IS_PRAYER = "is_prayer"
-        private const val CHANNEL_ID = "alarms"
+        const val ACTION_STOP_GROUP = "com.example.prayeralarm.STOP_GROUP"
+        private const val EXTRA_REMAINING = "remaining"
         private const val NOTIFICATION_ID = 1
-        const val SNOOZE_MINUTES = 10L
-        private const val AUTO_STOP_MILLIS = 5 * 60 * 1000L
+        private const val MIN_VOLUME = 0.05f
+        private const val RAMP_TICK_MILLIS = 250L
 
         private val _ringing = MutableStateFlow<RingingAlarm?>(null)
         val ringing: StateFlow<RingingAlarm?> = _ringing
 
-        fun start(context: Context, label: String, isPrayer: Boolean) {
+        fun start(context: Context, alarm: RingingAlarm) {
             ContextCompat.startForegroundService(
                 context,
                 Intent(context, AlarmService::class.java)
-                    .putExtra(AlarmScheduler.EXTRA_LABEL, label)
-                    .putExtra(EXTRA_IS_PRAYER, isPrayer),
+                    .putExtra(AlarmScheduler.EXTRA_LABEL, alarm.label)
+                    .putExtra(AlarmScheduler.EXTRA_IS_PRAYER, alarm.isPrayer)
+                    .putExtra(AlarmScheduler.EXTRA_SOUND, alarm.soundUri)
+                    .putExtra(AlarmScheduler.EXTRA_ID, alarm.groupId)
+                    .putExtra(AlarmScheduler.EXTRA_SESSION_END, alarm.sessionEnd)
+                    .putExtra(EXTRA_REMAINING, alarm.remaining),
             )
         }
 
@@ -179,21 +245,5 @@ class AlarmService : Service() {
             context, action.hashCode(), Intent(context, AlarmService::class.java).setAction(action),
             PendingIntent.FLAG_IMMUTABLE,
         )
-
-        fun canUseFullScreen(context: Context): Boolean =
-            Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE ||
-                context.getSystemService(NotificationManager::class.java).canUseFullScreenIntent()
-
-        fun ensureChannel(context: Context) {
-            // The service plays the sound itself, so the channel stays silent.
-            val channel = NotificationChannel(
-                CHANNEL_ID, context.getString(R.string.alarms), NotificationManager.IMPORTANCE_HIGH,
-            ).apply {
-                setSound(null, null)
-                enableVibration(false)
-                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            }
-            context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
-        }
     }
 }

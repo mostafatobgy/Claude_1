@@ -9,25 +9,91 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
-/** A regular alarm. An empty [days] set means it rings once and then turns itself off. */
-data class Alarm(
+/** When an alarm group starts: a fixed clock time, or minutes before/after a prayer (moves with it every day). */
+sealed interface Anchor {
+    data class Fixed(val hour: Int, val minute: Int) : Anchor
+    data class AfterPrayer(val prayer: Prayer, val offsetMinutes: Int) : Anchor
+}
+
+enum class Repeat { ONCE, DAILY, WORK_DAYS, OFF_DAYS, CUSTOM }
+
+/**
+ * One or more alarms that ring [intervalMinutes] apart, starting at [anchor].
+ * A single alarm is just a group with [count] = 1.
+ */
+data class AlarmGroup(
     val id: Int,
-    val hour: Int,
-    val minute: Int,
     val label: String = "",
-    val days: Set<DayOfWeek> = emptySet(),
+    val anchor: Anchor = Anchor.Fixed(7, 0),
+    val count: Int = 1,
+    val intervalMinutes: Int = 5,
+    val repeat: Repeat = Repeat.ONCE,
+    val customDays: Set<DayOfWeek> = emptySet(),
     val enabled: Boolean = true,
+    val soundUri: String? = null,
+    val soundName: String? = null,
+    /** Epoch millis; alarms at or before this are skipped ("skip next" or "I'm awake, stop the rest"). */
+    val skipUntil: Long = 0L,
 ) {
-    fun nextTrigger(from: ZonedDateTime): ZonedDateTime {
-        for (i in 0L..7L) {
-            val date = from.toLocalDate().plusDays(i)
-            if (days.isNotEmpty() && date.dayOfWeek !in days) continue
-            val time = date.atTime(hour, minute).atZone(from.zone)
-            if (time.isAfter(from)) return time
+    fun runsOn(date: LocalDate, workDays: Set<DayOfWeek>): Boolean = when (repeat) {
+        Repeat.ONCE, Repeat.DAILY -> true
+        Repeat.WORK_DAYS -> date.dayOfWeek in workDays
+        Repeat.OFF_DAYS -> date.dayOfWeek !in workDays
+        Repeat.CUSTOM -> date.dayOfWeek in customDays
+    }
+
+    /** All ring times of the group for the session belonging to [date] (empty if it doesn't run that day). */
+    fun session(date: LocalDate, zone: ZoneId, ctx: ScheduleContext): List<ZonedDateTime> {
+        if (!runsOn(date, ctx.workDays)) return emptyList()
+        val start = when (anchor) {
+            is Anchor.Fixed -> date.atTime(anchor.hour, anchor.minute).atZone(zone)
+            is Anchor.AfterPrayer -> ctx.prayers.timesFor(date, zone)[anchor.prayer]
+                ?.plusMinutes(anchor.offsetMinutes.toLong())
+        } ?: return emptyList()
+        return (0 until count).map { start.plusMinutes(it.toLong() * intervalMinutes) }
+    }
+
+    fun nextOccurrence(from: ZonedDateTime, ctx: ScheduleContext): Occurrence? {
+        if (!enabled) return null
+        // Start a day early: a session may cross midnight.
+        for (day in -1L..8L) {
+            val times = session(from.toLocalDate().plusDays(day), from.zone, ctx)
+            times.forEachIndexed { index, time ->
+                if (time.isAfter(from) && time.toInstant().toEpochMilli() > skipUntil) {
+                    return Occurrence(time, index, times.last())
+                }
+            }
         }
-        error("No trigger found for alarm $id")
+        return null
     }
 }
+
+/** One ring of a group: its time, position in the session, and when the session's last alarm rings. */
+data class Occurrence(val time: ZonedDateTime, val index: Int, val sessionEnd: ZonedDateTime)
+
+data class ScheduleContext(val workDays: Set<DayOfWeek>, val prayers: PrayerSettings)
+
+enum class ThemeMode { SYSTEM, LIGHT, DARK }
+
+data class AppSettings(
+    val alarmSoundUri: String? = null,
+    val alarmSoundName: String? = null,
+    val prayerSoundUri: String? = null,
+    val prayerSoundName: String? = null,
+    val vibrate: Boolean = true,
+    /** 0 = full volume immediately. */
+    val ascendingSeconds: Int = 0,
+    val snoozeMinutes: Int = 10,
+    val ringMinutes: Int = 5,
+    /** Notify this many minutes before a group's first alarm; 0 = off. */
+    val reminderMinutes: Int = 5,
+    // Egypt and most of the region: Sunday to Thursday.
+    val workDays: Set<DayOfWeek> = setOf(
+        DayOfWeek.SUNDAY, DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY,
+    ),
+    val backgroundUri: String? = null,
+    val theme: ThemeMode = ThemeMode.SYSTEM,
+)
 
 data class PrayerAlarm(val enabled: Boolean, val minutesBefore: Int = 0)
 
