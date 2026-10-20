@@ -75,6 +75,9 @@ data class ScheduleContext(val workDays: Set<DayOfWeek>, val prayers: PrayerSett
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
+/** How the alarm screen shows the background picture: fill the screen (cropping), or show all of it. */
+enum class BackgroundFit { FILL, FIT }
+
 data class AppSettings(
     val alarmSoundUri: String? = null,
     val alarmSoundName: String? = null,
@@ -87,11 +90,14 @@ data class AppSettings(
     val ringMinutes: Int = 5,
     /** Notify this many minutes before a group's first alarm; 0 = off. */
     val reminderMinutes: Int = 5,
+    /** If the phone is unlocked within this many minutes before an alarm, ask whether to turn it off; 0 = off. */
+    val wakeCheckMinutes: Int = 60,
     // Egypt and most of the region: Sunday to Thursday.
     val workDays: Set<DayOfWeek> = setOf(
         DayOfWeek.SUNDAY, DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY,
     ),
     val backgroundUri: String? = null,
+    val backgroundFit: BackgroundFit = BackgroundFit.FILL,
     val theme: ThemeMode = ThemeMode.SYSTEM,
 )
 

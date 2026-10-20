@@ -21,6 +21,8 @@ object AlarmScheduler {
     const val ACTION_FIRE = "com.example.prayeralarm.FIRE"
     const val ACTION_REMIND = "com.example.prayeralarm.REMIND"
     const val ACTION_SKIP = "com.example.prayeralarm.SKIP"
+    const val ACTION_KEEP = "com.example.prayeralarm.KEEP"
+    const val ACTION_WATCH = "com.example.prayeralarm.WATCH"
 
     const val EXTRA_KIND = "kind"
     const val EXTRA_ID = "id"
@@ -38,6 +40,8 @@ object AlarmScheduler {
     private const val PRAYER_REQUEST_BASE = 100_000
     private const val SNOOZE_REQUEST = 200_000
     private const val REMINDER_REQUEST_BASE = 300_000
+    private const val WATCH_REQUEST_BASE = 400_000
+    private const val EARLY_WAKE_NOTIFICATION_BASE = 500_000
 
     fun canScheduleExact(context: Context): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
@@ -62,6 +66,7 @@ object AlarmScheduler {
         store: Store = Store(context),
     ): Occurrence? {
         cancel(context, ACTION_REMIND, REMINDER_REQUEST_BASE + group.id)
+        cancel(context, ACTION_WATCH, WATCH_REQUEST_BASE + group.id)
         val next = group.nextOccurrence(from, store.scheduleContext())
         if (next == null) {
             cancel(context, ACTION_FIRE, group.id)
@@ -74,10 +79,19 @@ object AlarmScheduler {
             putExtra(EXTRA_SOUND, group.soundUri)
         })
 
-        // Heads-up before the first alarm of a session only, not before each one in the group.
-        val reminder = store.appSettings.reminderMinutes
+        // Heads-up and the unlock check cover the first alarm of a session only, not each one in the group.
+        val appSettings = store.appSettings
+        val now = ZonedDateTime.now()
+        val watchAt = next.time.minusMinutes(appSettings.wakeCheckMinutes.toLong())
+        if (appSettings.wakeCheckMinutes > 0 && next.index == 0 && watchAt.isAfter(now)) {
+            val intent = receiverIntent(context, ACTION_WATCH)
+                .putExtra(EXTRA_ID, group.id)
+                .putExtra(EXTRA_TRIGGER, next.time.toInstant().toEpochMilli())
+            setReminder(context, WATCH_REQUEST_BASE + group.id, watchAt, intent)
+        }
+        val reminder = appSettings.reminderMinutes
         val remindAt = next.time.minusMinutes(reminder.toLong())
-        if (reminder > 0 && next.index == 0 && remindAt.isAfter(ZonedDateTime.now())) {
+        if (reminder > 0 && next.index == 0 && remindAt.isAfter(now)) {
             val intent = receiverIntent(context, ACTION_REMIND)
                 .putExtra(EXTRA_ID, group.id)
                 .putExtra(EXTRA_LABEL, label)
@@ -96,7 +110,7 @@ object AlarmScheduler {
         else group.copy(skipUntil = maxOf(group.skipUntil, sessionEndMillis))
         store.upsert(updated)
         scheduleGroup(context, updated, store = store)
-        context.getSystemService(NotificationManager::class.java).cancel(reminderNotificationId(groupId))
+        cancelNotifications(context, groupId)
     }
 
     fun skipNext(context: Context, group: AlarmGroup) {
@@ -107,10 +121,20 @@ object AlarmScheduler {
     fun cancelGroup(context: Context, groupId: Int) {
         cancel(context, ACTION_FIRE, groupId)
         cancel(context, ACTION_REMIND, REMINDER_REQUEST_BASE + groupId)
-        context.getSystemService(NotificationManager::class.java).cancel(reminderNotificationId(groupId))
+        cancel(context, ACTION_WATCH, WATCH_REQUEST_BASE + groupId)
+        cancelNotifications(context, groupId)
+    }
+
+    /** Removes the heads-up and "you're up early" notifications of a group. */
+    fun cancelNotifications(context: Context, groupId: Int) {
+        val nm = context.getSystemService(NotificationManager::class.java)
+        nm.cancel(reminderNotificationId(groupId))
+        nm.cancel(earlyWakeNotificationId(groupId))
     }
 
     fun reminderNotificationId(groupId: Int) = REMINDER_REQUEST_BASE + groupId
+
+    fun earlyWakeNotificationId(groupId: Int) = EARLY_WAKE_NOTIFICATION_BASE + groupId
 
     fun schedulePrayer(context: Context, settings: PrayerSettings, prayer: Prayer, from: ZonedDateTime = ZonedDateTime.now()) {
         val requestCode = PRAYER_REQUEST_BASE + prayer.ordinal

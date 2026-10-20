@@ -2,6 +2,8 @@ package com.example.prayeralarm.alarm
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.media.ExifInterface
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -40,6 +42,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.prayeralarm.R
+import com.example.prayeralarm.data.BackgroundFit
 import com.example.prayeralarm.data.Store
 import com.example.prayeralarm.ui.AppTheme
 import java.time.LocalTime
@@ -71,6 +74,7 @@ class AlarmRingActivity : ComponentActivity() {
                         it,
                         settings.snoozeMinutes,
                         background,
+                        settings.backgroundFit,
                         onSnooze = { send(AlarmService.ACTION_SNOOZE) },
                         onDismiss = { send(AlarmService.ACTION_DISMISS) },
                         onStopGroup = { send(AlarmService.ACTION_STOP_GROUP) },
@@ -85,16 +89,34 @@ class AlarmRingActivity : ComponentActivity() {
         finish()
     }
 
-    /** Decodes the chosen picture scaled down to roughly screen size; null if it can't be read. */
+    /**
+     * Decodes the chosen picture scaled down to roughly screen size, turned the way it was taken
+     * (camera photos store their rotation separately in EXIF); null if it can't be read.
+     */
     private fun loadBackground(uri: Uri): Bitmap? = runCatching {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
         val target = maxOf(resources.displayMetrics.widthPixels, resources.displayMetrics.heightPixels)
         var sample = 1
         while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= target) sample *= 2
-        contentResolver.openInputStream(uri)?.use {
+        val bitmap = contentResolver.openInputStream(uri)?.use {
             BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample })
+        } ?: return@runCatching null
+        val orientation = contentResolver.openInputStream(uri)?.use {
+            ExifInterface(it).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+        } ?: ExifInterface.ORIENTATION_NORMAL
+        val matrix = Matrix()
+        when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+            ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+            ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+            ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.postScale(-1f, 1f)
+            ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.postScale(1f, -1f)
+            ExifInterface.ORIENTATION_TRANSPOSE -> { matrix.postRotate(90f); matrix.postScale(-1f, 1f) }
+            ExifInterface.ORIENTATION_TRANSVERSE -> { matrix.postRotate(270f); matrix.postScale(-1f, 1f) }
+            else -> return@runCatching bitmap
         }
+        Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
     }.getOrNull()
 }
 
@@ -103,6 +125,7 @@ private fun RingScreen(
     alarm: RingingAlarm,
     snoozeMinutes: Int,
     background: Bitmap?,
+    fit: BackgroundFit,
     onSnooze: () -> Unit,
     onDismiss: () -> Unit,
     onStopGroup: () -> Unit,
@@ -111,7 +134,11 @@ private fun RingScreen(
         Box(Modifier.fillMaxSize()) {
             val textColor = if (background != null) Color.White else MaterialTheme.colorScheme.onPrimaryContainer
             if (background != null) {
-                Image(background.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                if (fit == BackgroundFit.FIT) Box(Modifier.fillMaxSize().background(Color.Black))
+                Image(
+                    background.asImageBitmap(), null, Modifier.fillMaxSize(),
+                    contentScale = if (fit == BackgroundFit.FIT) ContentScale.Fit else ContentScale.Crop,
+                )
                 // Darken the picture so the text stays readable on any image.
                 Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)))
             }

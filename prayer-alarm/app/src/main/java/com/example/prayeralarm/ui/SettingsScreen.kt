@@ -34,6 +34,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.prayeralarm.R
 import com.example.prayeralarm.data.AppSettings
+import com.example.prayeralarm.data.BackgroundFit
 import com.example.prayeralarm.data.ThemeMode
 import java.time.DayOfWeek
 
@@ -41,8 +42,9 @@ private val ascendingOptions = listOf(0, 15, 30, 60, 120)
 private val snoozeOptions = listOf(5, 10, 15, 20, 30)
 private val ringOptions = listOf(1, 3, 5, 10, 15)
 private val reminderOptions = listOf(0, 5, 10, 15, 30, 60)
+private val wakeCheckOptions = listOf(0, 30, 60, 90, 120)
 
-private enum class Picker { ASCENDING, SNOOZE, RING, REMINDER, THEME, BACKGROUND }
+private enum class Picker { ASCENDING, SNOOZE, RING, REMINDER, WAKE_CHECK, THEME, BACKGROUND, FIT }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,6 +91,7 @@ fun SettingsScreen(settings: AppSettings, onChange: ((AppSettings) -> AppSetting
             SettingRow(stringResource(R.string.snooze_length), stringResource(R.string.n_minutes, settings.snoozeMinutes)) { picker = Picker.SNOOZE }
             SettingRow(stringResource(R.string.ring_duration), stringResource(R.string.n_minutes, settings.ringMinutes)) { picker = Picker.RING }
             SettingRow(stringResource(R.string.upcoming_notification), reminderLabel(settings.reminderMinutes)) { picker = Picker.REMINDER }
+            SettingRow(stringResource(R.string.wake_check), wakeCheckLabel(settings.wakeCheckMinutes)) { picker = Picker.WAKE_CHECK }
 
             HorizontalDivider(Modifier.padding(top = 8.dp))
             SectionTitle(stringResource(R.string.section_week))
@@ -116,6 +119,9 @@ fun SettingsScreen(settings: AppSettings, onChange: ((AppSettings) -> AppSetting
                 stringResource(R.string.alarm_background),
                 stringResource(if (settings.backgroundUri == null) R.string.background_default else R.string.background_picture),
             ) { picker = Picker.BACKGROUND }
+            if (settings.backgroundUri != null) {
+                SettingRow(stringResource(R.string.background_fit), stringResource(settings.backgroundFit.nameRes())) { picker = Picker.FIT }
+            }
 
             HorizontalDivider(Modifier.padding(top = 8.dp))
             SectionTitle(stringResource(R.string.section_reliability))
@@ -148,6 +154,14 @@ fun SettingsScreen(settings: AppSettings, onChange: ((AppSettings) -> AppSetting
             stringResource(R.string.upcoming_notification), reminderOptions, settings.reminderMinutes,
             label = { reminderLabel(it) }, onDismiss = { picker = null },
         ) { v -> onChange { it.copy(reminderMinutes = v) }; picker = null }
+        Picker.WAKE_CHECK -> ChoiceDialog(
+            stringResource(R.string.wake_check), wakeCheckOptions, settings.wakeCheckMinutes,
+            label = { wakeCheckLabel(it) }, onDismiss = { picker = null },
+        ) { v -> onChange { it.copy(wakeCheckMinutes = v) }; picker = null }
+        Picker.FIT -> ChoiceDialog(
+            stringResource(R.string.background_fit), BackgroundFit.entries, settings.backgroundFit,
+            label = { stringResource(it.nameRes()) }, onDismiss = { picker = null },
+        ) { v -> onChange { it.copy(backgroundFit = v) }; picker = null }
         Picker.THEME -> ChoiceDialog(
             stringResource(R.string.theme), ThemeMode.entries, settings.theme,
             label = { stringResource(it.nameRes()) }, onDismiss = { picker = null },
@@ -174,3 +188,12 @@ private fun ascendingLabel(seconds: Int) = when {
 @Composable
 private fun reminderLabel(minutes: Int) =
     if (minutes == 0) stringResource(R.string.off) else stringResource(R.string.n_minutes_before, minutes)
+
+@Composable
+private fun wakeCheckLabel(minutes: Int) =
+    if (minutes == 0) stringResource(R.string.off) else stringResource(R.string.within_n_minutes_before, minutes)
+
+private fun BackgroundFit.nameRes(): Int = when (this) {
+    BackgroundFit.FILL -> R.string.fit_fill
+    BackgroundFit.FIT -> R.string.fit_whole
+}

@@ -54,8 +54,10 @@ class Store(context: Context) {
                 snoozeMinutes = prefs.getInt("s_snooze", d.snoozeMinutes),
                 ringMinutes = prefs.getInt("s_ring", d.ringMinutes),
                 reminderMinutes = prefs.getInt("s_reminder", d.reminderMinutes),
+                wakeCheckMinutes = prefs.getInt("s_wake_check", d.wakeCheckMinutes),
                 workDays = prefs.getString("s_work_days", null)?.let(::parseDays) ?: d.workDays,
                 backgroundUri = prefs.getString("s_background", null),
+                backgroundFit = enumOr(prefs.getString("s_background_fit", null), d.backgroundFit),
                 theme = enumOr(prefs.getString("s_theme", null), d.theme),
             )
         }
@@ -70,8 +72,10 @@ class Store(context: Context) {
                 .putInt("s_snooze", v.snoozeMinutes)
                 .putInt("s_ring", v.ringMinutes)
                 .putInt("s_reminder", v.reminderMinutes)
+                .putInt("s_wake_check", v.wakeCheckMinutes)
                 .putString("s_work_days", v.workDays.joinToString(",") { it.value.toString() })
                 .putString("s_background", v.backgroundUri)
+                .putString("s_background_fit", v.backgroundFit.name)
                 .putString("s_theme", v.theme.name)
                 .apply()
         }

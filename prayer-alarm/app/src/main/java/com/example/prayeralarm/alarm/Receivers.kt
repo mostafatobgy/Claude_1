@@ -21,6 +21,8 @@ class AlarmReceiver : BroadcastReceiver() {
             AlarmScheduler.ACTION_FIRE -> fire(context, intent, id, label, trigger, sessionEnd)
             AlarmScheduler.ACTION_REMIND -> Notifications.showReminder(context, id, label, trigger, sessionEnd)
             AlarmScheduler.ACTION_SKIP -> AlarmScheduler.skipSession(context, id, sessionEnd)
+            AlarmScheduler.ACTION_KEEP -> AlarmScheduler.cancelNotifications(context, id)
+            AlarmScheduler.ACTION_WATCH -> WakeWatchService.start(context, trigger)
         }
     }
 
@@ -38,8 +40,7 @@ class AlarmReceiver : BroadcastReceiver() {
                     context,
                     RingingAlarm(label, isPrayer = false, intent.getStringExtra(AlarmScheduler.EXTRA_SOUND), id, sessionEnd, remaining),
                 )
-                context.getSystemService(android.app.NotificationManager::class.java)
-                    .cancel(AlarmScheduler.reminderNotificationId(id))
+                AlarmScheduler.cancelNotifications(context, id)
                 if (group.repeat == Repeat.ONCE && remaining == 0) {
                     store.upsert(group.copy(enabled = false))
                     AlarmScheduler.cancelGroup(context, id)

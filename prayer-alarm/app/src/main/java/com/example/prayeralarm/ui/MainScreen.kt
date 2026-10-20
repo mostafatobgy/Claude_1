@@ -48,7 +48,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -56,9 +55,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.location.LocationManagerCompat
@@ -81,6 +82,8 @@ import java.util.Locale
 
 private val beforeOptions = listOf(0, 5, 10, 15, 20, 30)
 
+private enum class MainTab { ALARMS, PRAYERS }
+
 private sealed interface Screen {
     data object Main : Screen
     data object Settings : Screen
@@ -95,7 +98,10 @@ fun MainScreen(vm: MainViewModel) {
     val appSettings by vm.appSettings.collectAsStateWithLifecycle()
     val groups by vm.groups.collectAsStateWithLifecycle()
     val ctx = remember(settings, appSettings) { ScheduleContext(appSettings.workDays, settings) }
-    var tab by rememberSaveable { mutableIntStateOf(0) }
+    // Alarms open first. Keep Alarms on the left and Prayer times on the right in both Arabic (RTL) and English.
+    var tab by rememberSaveable { mutableStateOf(MainTab.ALARMS) }
+    val tabs = if (LocalLayoutDirection.current == LayoutDirection.Rtl) listOf(MainTab.PRAYERS, MainTab.ALARMS)
+    else listOf(MainTab.ALARMS, MainTab.PRAYERS)
     var screen by remember { mutableStateOf<Screen>(Screen.Main) }
 
     val notificationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
@@ -148,7 +154,7 @@ fun MainScreen(vm: MainViewModel) {
             )
         },
         floatingActionButton = {
-            if (tab == 1) FloatingActionButton(onClick = {
+            if (tab == MainTab.ALARMS) FloatingActionButton(onClick = {
                 screen = Screen.Edit(AlarmGroup(vm.newGroupId()), isNew = true)
             }) { Icon(Icons.Default.Add, stringResource(R.string.add_alarm)) }
         },
@@ -164,13 +170,17 @@ fun MainScreen(vm: MainViewModel) {
                     context.startActivity(packageIntent(context, Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT))
                 }
             }
-            TabRow(selectedTabIndex = tab) {
-                Tab(tab == 0, { tab = 0 }, text = { Text(stringResource(R.string.prayer_times)) })
-                Tab(tab == 1, { tab = 1 }, text = { Text(stringResource(R.string.alarms)) })
+            TabRow(selectedTabIndex = tabs.indexOf(tab)) {
+                tabs.forEach { t ->
+                    Tab(
+                        tab == t, { tab = t },
+                        text = { Text(stringResource(if (t == MainTab.ALARMS) R.string.alarms else R.string.prayer_times)) },
+                    )
+                }
             }
             when (tab) {
-                0 -> PrayerTab(settings, vm)
-                else -> AlarmsTab(groups, ctx, appSettings, vm) { screen = Screen.Edit(it, isNew = false) }
+                MainTab.PRAYERS -> PrayerTab(settings, vm)
+                MainTab.ALARMS -> AlarmsTab(groups, ctx, appSettings, vm) { screen = Screen.Edit(it, isNew = false) }
             }
         }
     }
