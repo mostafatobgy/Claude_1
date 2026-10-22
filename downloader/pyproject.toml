@@ -10,6 +10,10 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 
+[project.optional-dependencies]
+# Lets "Find video" read YouTube, Facebook, X, TikTok and 1,800+ other sites.
+video = ["yt-dlp"]
+
 [project.scripts]
 turbodl = "turbodl.cli:main"
 

@@ -6,6 +6,9 @@ on:
   push:
     paths: ["downloader/**", ".github/workflows/turbodl.yml"]
   workflow_dispatch:
+  # Weekly rebuild so the apps carry a fresh yt-dlp (video sites change often).
+  schedule:
+    - cron: "23 4 * * 1"
 
 permissions:
   contents: read
@@ -22,8 +25,28 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - run: pip install pytest
+      - run: pip install pytest yt-dlp
       - run: python -m pytest -q
+
+  extension:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-save playwright@1.56.1 && npx playwright install --with-deps chromium
+        working-directory: downloader/browser-extension
+      - run: xvfb-run -a node test/run.mjs
+        working-directory: downloader/browser-extension
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TurboDL-browser-extension
+          path: |
+            downloader/browser-extension
+            !downloader/browser-extension/test
+            !downloader/browser-extension/node_modules
 
   build:
     needs: test
@@ -40,8 +63,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - run: pip install pyinstaller
-      - run: pyinstaller --onefile --windowed --name TurboDL TurboDL.pyw
+      - run: pip install pyinstaller yt-dlp
+      - run: pyinstaller --onefile --windowed --name TurboDL --collect-all yt_dlp TurboDL.pyw
       - uses: actions/upload-artifact@v4
         with:
           name: TurboDL-${{ runner.os }}

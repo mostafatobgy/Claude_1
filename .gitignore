@@ -3,3 +3,4 @@ __pycache__/
 site/news.json
 builder/translations.json
 builder/notified.json
+node_modules/

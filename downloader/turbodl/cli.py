@@ -59,11 +59,68 @@ def download_one(dl: Download, quiet: bool) -> bool:
     return False
 
 
+def find_main(argv: list[str]) -> int:
+    from .finder import find_videos, ytdlp_available
+
+    p = argparse.ArgumentParser(
+        prog="turbodl find",
+        description="Show the direct video links behind a web page (YouTube and other sites need yt-dlp).",
+    )
+    p.add_argument("url", metavar="PAGE_URL")
+    p.add_argument("-b", "--best", action="store_true", help="print only the best link (for scripts)")
+    p.add_argument("--json", action="store_true", help="print all results as JSON")
+    p.add_argument("--download", action="store_true", help="download the best video with TurboDL")
+    p.add_argument("-c", "--connections", type=int, default=DEFAULT_CONNECTIONS)
+    p.add_argument("-d", "--dir", default=".", help="folder for --download")
+    p.add_argument("--no-ytdlp", action="store_true", help="only use the built-in page scan")
+    args = p.parse_args(argv)
+
+    result = find_videos(args.url, use_ytdlp=not args.no_ytdlp)
+    if args.json:
+        import dataclasses
+        import json
+        print(json.dumps(dataclasses.asdict(result) | {"best": result.best() and result.best().url},
+                         indent=2, ensure_ascii=False))
+        return 0 if result.links else 1
+    if not result.links:
+        sys.stderr.write((result.message or "No video found.") + "\n")
+        return 1
+    best = result.best()
+    if args.best:
+        print(best.url)
+    elif not args.download:
+        if result.title:
+            print(result.title)
+        for i, v in enumerate(result.links, 1):
+            star = "*" if v is best else " "
+            size = human_size(v.size) if v.size else ""
+            print(f"{star}{i:3}. {v.quality or '-':>6}  {v.kind:<11} {v.ext:<5} {size:>9}  {v.note}")
+            print(f"       {v.url}")
+        if not ytdlp_available() and not args.no_ytdlp:
+            sys.stderr.write("Tip: pip install yt-dlp  - adds YouTube, Facebook, X, TikTok and 1,800+ sites.\n")
+    if args.download:
+        if not best.downloadable:
+            sys.stderr.write("The best link is a stream playlist (m3u8/mpd), not a single file; "
+                             "open it in VLC or use yt-dlp to save it.\n")
+            return 1
+        dl = Download(best.url, folder=args.dir, filename=result.filename_for(best),
+                      connections=args.connections, headers=best.headers)
+        try:
+            return 0 if download_one(dl, quiet=False) else 1
+        except KeyboardInterrupt:
+            return 130
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    if argv and argv[0] == "find":
+        return find_main(argv[1:])
     p = argparse.ArgumentParser(
         prog="turbodl",
         description="Download large files faster using several connections at once. "
-                    "Interrupted downloads resume automatically.",
+                    "Interrupted downloads resume automatically. "
+                    "To get the video links behind a web page, run: turbodl find PAGE_URL",
     )
     p.add_argument("urls", nargs="+", metavar="URL")
     p.add_argument("-c", "--connections", type=int, default=DEFAULT_CONNECTIONS,

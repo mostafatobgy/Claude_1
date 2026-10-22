@@ -6,11 +6,13 @@ import json
 import os
 import subprocess
 import sys
+import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
 from . import __version__
 from .engine import DEFAULT_CONNECTIONS, MAX_CONNECTIONS, Download, human_size, human_time, parse_rate
+from .finder import FindResult, find_videos, ytdlp_available
 
 CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".turbodl")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "settings.json")
@@ -76,6 +78,7 @@ class App:
         url_entry.bind("<Return>", lambda e: self.add())
         ttk.Button(top, text="Paste", command=self.paste).grid(row=0, column=6, padx=2)
         ttk.Button(top, text="Download", style="Accent.TButton", command=self.add).grid(row=0, column=7, padx=2)
+        ttk.Button(top, text="Find video…", command=self.find_video).grid(row=0, column=8, padx=2)
 
         ttk.Label(top, text="Save to:").grid(row=1, column=0, sticky="w", pady=(6, 0))
         self.folder_var = tk.StringVar(value=self.settings.get("folder") or default_folder())
@@ -155,9 +158,20 @@ class App:
         self.url_var.set("")
         self._save_settings()
 
+    def find_video(self) -> None:
+        url = self.url_var.get().strip()
+        if not url:
+            self.paste()
+            url = self.url_var.get().strip()
+        if not url:
+            messagebox.showinfo("TurboDL", "Paste the address of the page that has the video, "
+                                           "then click Find video.")
+            return
+        FinderDialog(self, url)
+
     def _add_download(self, url: str, folder: str, path: str | None = None, rate: int = 0,
-                      start: bool = True) -> None:
-        dl = Download(url, folder=folder, connections=self._connections(), rate_limit=rate)
+                      start: bool = True, headers: dict | None = None) -> None:
+        dl = Download(url, folder=folder, connections=self._connections(), rate_limit=rate, headers=headers)
         if path:
             dl.requested_name = os.path.basename(path)
         item = self.tree.insert("", "end", text=dl.name, values=("?", "", "", "", "", "Waiting"))
@@ -252,7 +266,8 @@ class App:
 
     def _save_settings(self) -> None:
         queue = [
-            {"url": d.url, "folder": d.folder, "path": d.path}
+            {"url": d.url, "folder": d.folder, "path": d.path or d.requested_name,
+             "headers": d.extra_headers}
             for d in self.downloads.values() if d.state not in ("done", "cancelled")
         ]
         data = {
@@ -273,7 +288,7 @@ class App:
         for entry in self.settings.get("queue", []):
             if entry.get("url"):
                 self._add_download(entry["url"], entry.get("folder") or default_folder(),
-                                   path=entry.get("path"), start=False)
+                                   path=entry.get("path"), start=False, headers=entry.get("headers"))
 
     def _on_close(self) -> None:
         active = [d for d in self.downloads.values() if d.state in ("downloading", "connecting", "verifying")]
@@ -287,6 +302,113 @@ class App:
             d.wait(5)
         self._save_settings()
         self.root.destroy()
+
+
+class FinderDialog:
+    """Shows the video links found behind a page; copy one or download it."""
+
+    def __init__(self, app: App, url: str):
+        self.app = app
+        self.result: FindResult | None = None
+        self.win = win = tk.Toplevel(app.root)
+        win.title("Find video")
+        win.geometry("860x380")
+        win.transient(app.root)
+
+        self.status = tk.StringVar(value=f"Looking for videos in {url} …")
+        ttk.Label(win, textvariable=self.status, wraplength=830).pack(fill="x", padx=10, pady=(10, 4))
+
+        frame = ttk.Frame(win)
+        frame.pack(fill="both", expand=True, padx=10)
+        cols = ("quality", "kind", "ext", "size", "note")
+        self.tree = ttk.Treeview(frame, columns=cols, show="headings", selectmode="browse")
+        for col, title, width in (("quality", "Quality", 70), ("kind", "Type", 100), ("ext", "Format", 60),
+                                  ("size", "Size", 85), ("note", "Details / link", 500)):
+            self.tree.heading(col, text=title)
+            self.tree.column(col, width=width, anchor="w" if col == "note" else "center", stretch=col == "note")
+        scroll = ttk.Scrollbar(frame, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=scroll.set)
+        self.tree.pack(side="left", fill="both", expand=True)
+        scroll.pack(side="right", fill="y")
+        self.tree.bind("<Double-1>", lambda e: self.download())
+
+        buttons = ttk.Frame(win)
+        buttons.pack(fill="x", padx=10, pady=8)
+        self.dl_btn = ttk.Button(buttons, text="Download", style="Accent.TButton", command=self.download,
+                                 state="disabled")
+        self.dl_btn.pack(side="left", padx=2)
+        self.copy_btn = ttk.Button(buttons, text="Copy link", command=self.copy, state="disabled")
+        self.copy_btn.pack(side="left", padx=2)
+        ttk.Button(buttons, text="Close", command=win.destroy).pack(side="right", padx=2)
+        if not ytdlp_available():
+            ttk.Label(buttons, foreground="gray",
+                      text="Tip: install yt-dlp for YouTube, Facebook, X, TikTok and 1,800+ more sites"
+                      ).pack(side="left", padx=10)
+
+        threading.Thread(target=self._search, args=(url,), daemon=True).start()
+
+    def _search(self, url: str) -> None:
+        try:
+            result = find_videos(url)
+        except Exception as exc:  # noqa: BLE001
+            result = FindResult(page_url=url, message=f"Something went wrong: {exc}")
+        try:
+            self.win.after(0, self._show, result)
+        except (tk.TclError, RuntimeError):
+            pass  # window was closed while searching
+
+    def _show(self, result: FindResult) -> None:
+        if not self.win.winfo_exists():
+            return
+        self.result = result
+        if not result.links:
+            self.status.set(result.message or "No video found on this page.")
+            return
+        count = len(result.links)
+        self.status.set(f"{result.title or 'Video'} — found {count} link{'s' * (count != 1)}. "
+                        "Pick one and click Download, or copy its link.")
+        best = result.best()
+        for i, v in enumerate(result.links):
+            self.tree.insert("", "end", iid=str(i), values=(
+                v.quality or "-", v.kind, v.ext, human_size(v.size) if v.size else "",
+                (v.note + "  ·  " if v.note else "") + v.url))
+            if v is best:
+                self.tree.selection_set(str(i))
+                self.tree.see(str(i))
+        self.dl_btn.configure(state="normal")
+        self.copy_btn.configure(state="normal")
+
+    def _selected(self):
+        sel = self.tree.selection()
+        if not (sel and self.result):
+            return None
+        return self.result.links[int(sel[0])]
+
+    def copy(self) -> None:
+        link = self._selected()
+        if link:
+            self.win.clipboard_clear()
+            self.win.clipboard_append(link.url)
+            self.status.set("Link copied. Note: some sites' links only work for a few hours.")
+
+    def download(self) -> None:
+        link = self._selected()
+        if not link or not self.result:
+            return
+        if not link.downloadable:
+            messagebox.showinfo("TurboDL", "This is a stream playlist (made of many small pieces), not a "
+                                           "single file. Copy the link and open it in VLC, or save it "
+                                           "with yt-dlp.", parent=self.win)
+            return
+        try:
+            rate = parse_rate(self.app.limit_var.get())
+        except ValueError:
+            rate = 0
+        self.app._add_download(link.url, self.app.folder_var.get(), path=self.result.filename_for(link),
+                               rate=rate, headers=link.headers)
+        self.app.url_var.set("")
+        self.app._save_settings()
+        self.win.destroy()
 
 
 def main() -> int:

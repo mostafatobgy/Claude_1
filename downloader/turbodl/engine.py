@@ -201,7 +201,8 @@ class Download:
         self.folder = folder
         self.requested_name = filename
         self.connections = max(1, min(MAX_CONNECTIONS, connections))
-        self.headers = {"User-Agent": USER_AGENT, **(headers or {})}
+        self.extra_headers = dict(headers or {})
+        self.headers = {"User-Agent": USER_AGENT, **self.extra_headers}
         self.limiter = RateLimiter(rate_limit)
         self.timeout = timeout
         self.max_retries = max_retries

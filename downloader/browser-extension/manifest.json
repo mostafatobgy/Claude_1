@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "TurboDL Video Link Catcher",
+  "version": "1.0.0",
+  "description": "Shows the direct links of videos a page plays, so you can copy them or download them with TurboDL.",
+  "permissions": ["webRequest", "storage", "downloads", "activeTab"],
+  "host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "background.js" },
+  "action": {
+    "default_title": "TurboDL - video links on this page",
+    "default_popup": "popup.html",
+    "default_icon": { "16": "icons/16.png", "48": "icons/48.png", "128": "icons/128.png" }
+  },
+  "icons": { "16": "icons/16.png", "48": "icons/48.png", "128": "icons/128.png" }
+}
