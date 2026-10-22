@@ -81,3 +81,7 @@ python -m pytest -q builder/tests   # اختبارات بدون إنترنت
 python builder/build.py             # يكتب site/news.json
 cd site && python -m http.server    # http://localhost:8000
 ```
+
+---
+
+**TurboDL** — تطبيق لتسريع تحميل الملفات الكبيرة (أفلام وغيرها) بعدة اتصالات في نفس الوقت مع إمكانية الإيقاف والاستكمال: انظر [`downloader/`](downloader/README.md).
