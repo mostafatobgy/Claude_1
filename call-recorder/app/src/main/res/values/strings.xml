@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">مسجّل المكالمات</string>
+
+    <string name="auto_record_label">تسجيل المكالمات تلقائيًا</string>
+    <string name="record_now">سجّل الآن</string>
+    <string name="stop_recording">إيقاف التسجيل</string>
+    <string name="recordings_header">التسجيلات</string>
+    <string name="empty">لا توجد تسجيلات بعد.\nفعّل التسجيل التلقائي أو اضغط «سجّل الآن».</string>
+
+    <string name="recording">يتم التسجيل…</string>
+    <string name="stopped">تم إيقاف التسجيل</string>
+    <string name="playing">جارٍ التشغيل…</string>
+    <string name="play_failed">تعذّر تشغيل الملف</string>
+    <string name="need_permissions">يحتاج التطبيق إذن الميكروفون وحالة الهاتف ليعمل</string>
+
+    <string name="play">تشغيل</string>
+    <string name="share">مشاركة</string>
+    <string name="delete">حذف</string>
+    <string name="cancel">إلغاء</string>
+    <string name="delete_title">حذف هذا التسجيل؟</string>
+
+    <!-- First-run consent -->
+    <string name="consent_title">قبل أن تبدأ</string>
+    <string name="consent_message">يسجّل هذا التطبيق مكالماتك على هاتفك فقط، ولا يرفعها إلى أي خادم.\n\nتسجيل المكالمات تحكمه القوانين، وهي تختلف من دولة لأخرى: ففي كثير من الأماكن يجب إعلام الطرف الآخر أو الحصول على موافقته. أنت وحدك المسؤول عن استخدام التطبيق بما يوافق القانون المعمول به لديك.\n\nملاحظة تقنية: تمنع أندرويد 10 فأحدث التطبيقات العادية من الوصول إلى صوت الطرف الآخر، لذلك قد يُسجَّل صوتك أنت فقط على بعض الأجهزة.</string>
+    <string name="consent_agree">أوافق وأتحمّل المسؤولية</string>
+    <string name="consent_exit">خروج</string>
+
+    <!-- Notification -->
+    <string name="channel_name">تسجيل مكالمة</string>
+    <string name="channel_desc">يظهر أثناء تسجيل مكالمة جارية</string>
+    <string name="notif_title">يتم تسجيل المكالمة</string>
+    <string name="notif_text_generic">تسجيل جارٍ</string>
+    <string name="notif_text_with">تسجيل المكالمة مع %1$s</string>
+</resources>
