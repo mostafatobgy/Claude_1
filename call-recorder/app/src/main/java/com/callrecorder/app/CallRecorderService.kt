@@ -1,15 +1,20 @@
 package com.callrecorder.app
 
+import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import android.media.MediaRecorder
 import android.os.Build
 import android.os.IBinder
+import android.os.SystemClock
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import java.io.File
 
 /**
@@ -19,11 +24,16 @@ import java.io.File
  * being recorded. Recording is best-effort — since Android 10 the platform blocks access to the
  * far-end call audio for ordinary apps, so on many devices only the local side (microphone /
  * loudspeaker) is captured. The service tries the richer audio sources first and falls back.
+ *
+ * Any failure is reported — both as an in-app broadcast (so the screen can show it) and as a
+ * notification (so it is visible even when the failure happens during a call) — rather than the
+ * service dying silently.
  */
 class CallRecorderService : Service() {
 
     private var recorder: MediaRecorder? = null
     private var outputFile: File? = null
+    private var startedAt: Long = 0L
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -39,13 +49,34 @@ class CallRecorderService : Service() {
     @Suppress("DEPRECATION") // the no-arg MediaRecorder() is the only option below API 31
     private fun start(number: String?) {
         if (recorder != null) return // already recording
-        startForeground(NOTIF_ID, buildNotification(number))
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            fail(getString(R.string.err_no_mic_permission))
+            return
+        }
+
+        // Enter the foreground as a microphone service before touching the mic (required 29+).
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                startForeground(
+                    NOTIF_ID, buildNotification(number),
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                )
+            } else {
+                startForeground(NOTIF_ID, buildNotification(number))
+            }
+        } catch (e: Exception) {
+            fail(getString(R.string.err_service, e.javaClass.simpleName))
+            return
+        }
 
         val file = Storage.newFile(this, number)
         outputFile = file
         val rec = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) MediaRecorder(this) else MediaRecorder()
 
-        var started = false
+        var lastError: String? = null
         // Try the sources most likely to capture both sides, then fall back to the plain mic.
         for (source in audioSources()) {
             try {
@@ -58,22 +89,21 @@ class CallRecorderService : Service() {
                 rec.setOutputFile(file.absolutePath)
                 rec.prepare()
                 rec.start()
-                started = true
-                break
-            } catch (_: Exception) {
-                // This source is not allowed on this device/Android version — try the next.
+                recorder = rec
+                startedAt = SystemClock.elapsedRealtime()
+                isRecording = true
+                broadcastState(recording = true, error = null)
+                return
+            } catch (e: Exception) {
+                lastError = "${e.javaClass.simpleName}: ${e.message}"
             }
         }
 
-        if (started) {
-            recorder = rec
-            isRecording = true
-        } else {
-            rec.release()
-            file.delete()
-            isRecording = false
-            stopSelf()
-        }
+        // Every audio source was refused by the OS.
+        rec.release()
+        file.delete()
+        outputFile = null
+        fail(getString(R.string.err_record_failed, lastError ?: "unknown"))
     }
 
     private fun audioSources(): List<Int> = listOf(
@@ -82,13 +112,23 @@ class CallRecorderService : Service() {
         MediaRecorder.AudioSource.MIC                  // local side only — the universal fallback
     )
 
+    /** Report a start failure to the UI and as a notification, then stop. */
+    private fun fail(message: String) {
+        isRecording = false
+        broadcastState(recording = false, error = message)
+        notifyError(message)
+        stopSelf()
+    }
+
     private fun stopRecorder() {
         val rec = recorder ?: return
+        // A recording under ~1s often has no frames and MediaRecorder.stop() throws; guard it.
+        val tooShort = SystemClock.elapsedRealtime() - startedAt < 1000
         try {
+            if (tooShort) throw IllegalStateException("too short")
             rec.stop()
         } catch (_: Exception) {
-            // Stopped too early to produce a valid file — discard it.
-            outputFile?.delete()
+            outputFile?.delete() // discard an unfinished/empty file
         } finally {
             rec.release()
             recorder = null
@@ -97,18 +137,47 @@ class CallRecorderService : Service() {
     }
 
     override fun onDestroy() {
+        val wasRecording = recorder != null
         stopRecorder()
+        if (wasRecording) broadcastState(recording = false, error = null)
         super.onDestroy()
     }
 
-    private fun buildNotification(number: String?): Notification {
+    private fun broadcastState(recording: Boolean, error: String?) {
+        sendBroadcast(
+            Intent(ACTION_STATE).setPackage(packageName)
+                .putExtra(EXTRA_RECORDING, recording)
+                .putExtra(EXTRA_ERROR, error)
+        )
+    }
+
+    private fun channel(): NotificationManager {
         val mgr = getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
+            val c = NotificationChannel(
                 CHANNEL_ID, getString(R.string.channel_name), NotificationManager.IMPORTANCE_LOW
             ).apply { description = getString(R.string.channel_desc) }
-            mgr.createNotificationChannel(channel)
+            mgr.createNotificationChannel(c)
         }
+        return mgr
+    }
+
+    private fun notifyError(message: String) {
+        channel().notify(
+            NOTIF_ERR,
+            NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle(getString(R.string.err_title))
+                .setContentText(message)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+                .setSmallIcon(R.drawable.ic_mic)
+                .setAutoCancel(true)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .build()
+        )
+    }
+
+    private fun buildNotification(number: String?): Notification {
+        channel()
         // Show the saved contact name when we can resolve it, otherwise the raw number.
         val display = Contacts.nameFor(this, number) ?: number
         val who = if (display.isNullOrBlank() || display == "unknown")
@@ -132,9 +201,13 @@ class CallRecorderService : Service() {
     companion object {
         const val ACTION_START = "com.callrecorder.app.START"
         const val ACTION_STOP = "com.callrecorder.app.STOP"
+        const val ACTION_STATE = "com.callrecorder.app.STATE"
         const val EXTRA_NUMBER = "number"
+        const val EXTRA_RECORDING = "recording"
+        const val EXTRA_ERROR = "error"
         private const val CHANNEL_ID = "recording"
         private const val NOTIF_ID = 1
+        private const val NOTIF_ERR = 2
 
         /** True while a recording is in progress — read by the UI to show the right button state. */
         @Volatile
@@ -149,9 +222,14 @@ class CallRecorderService : Service() {
             // On Android 12+ a mic foreground service started from the background can be refused;
             // catch it so an auto-record attempt during a call never crashes the phone app.
             try {
-                androidx.core.content.ContextCompat.startForegroundService(context, i)
+                ContextCompat.startForegroundService(context, i)
             } catch (_: Exception) {
                 isRecording = false
+                context.sendBroadcast(
+                    Intent(ACTION_STATE).setPackage(context.packageName)
+                        .putExtra(EXTRA_RECORDING, false)
+                        .putExtra(EXTRA_ERROR, context.getString(R.string.err_background_start))
+                )
             }
         }
 

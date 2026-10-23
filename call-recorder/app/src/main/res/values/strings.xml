@@ -15,6 +15,14 @@
     <string name="empty_recording">هذا التسجيل فارغ — لم يُلتقط صوت في هذه المكالمة</string>
     <string name="unknown_number">رقم غير معروف</string>
     <string name="need_permissions">يحتاج التطبيق إذن الميكروفون وحالة الهاتف ليعمل</string>
+    <string name="need_mic">يحتاج التطبيق إذن الميكروفون لبدء التسجيل</string>
+
+    <!-- Failure reasons (shown in-app and as a notification) -->
+    <string name="err_title">تعذّر بدء التسجيل</string>
+    <string name="err_no_mic_permission">لم يُمنح إذن الميكروفون</string>
+    <string name="err_service">تعذّر تشغيل خدمة التسجيل (%1$s)</string>
+    <string name="err_record_failed">رفض النظام كل مصادر الصوت: %1$s</string>
+    <string name="err_background_start">منع نظام أندرويد بدء التسجيل في الخلفية أثناء المكالمة. افتح التطبيق واضغط «سجّل الآن».</string>
 
     <string name="play">تشغيل</string>
     <string name="share">مشاركة</string>

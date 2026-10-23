@@ -1,7 +1,10 @@
 package com.callrecorder.app
 
 import android.Manifest
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.media.MediaPlayer
@@ -30,6 +33,17 @@ class MainActivity : AppCompatActivity() {
     private lateinit var autoSwitch: MaterialSwitch
     private var player: MediaPlayer? = null
     private var playingFile: File? = null
+
+    /** The service reports start success/failure/stop here so the UI reflects the real state. */
+    private val stateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            setRecordingUi(intent.getBooleanExtra(CallRecorderService.EXTRA_RECORDING, false))
+            intent.getStringExtra(CallRecorderService.EXTRA_ERROR)?.let {
+                Toast.makeText(this@MainActivity, it, Toast.LENGTH_LONG).show()
+            }
+            reload()
+        }
+    }
 
     private val permissions = buildList {
         add(Manifest.permission.RECORD_AUDIO)
@@ -81,8 +95,17 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         autoSwitch.isChecked = Prefs.autoRecord(this)
+        ContextCompat.registerReceiver(
+            this, stateReceiver, IntentFilter(CallRecorderService.ACTION_STATE),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
         reload()
         refreshButtons()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        runCatching { unregisterReceiver(stateReceiver) }
     }
 
     override fun onStop() {
@@ -108,9 +131,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun hasCorePermissions(): Boolean =
-        ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) ==
-            PackageManager.PERMISSION_GRANTED &&
+        hasMicPermission() &&
         ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) ==
+            PackageManager.PERMISSION_GRANTED
+
+    private fun hasMicPermission(): Boolean =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) ==
             PackageManager.PERMISSION_GRANTED
 
     private fun requestPermissions() {
@@ -124,20 +150,25 @@ class MainActivity : AppCompatActivity() {
         if (CallRecorderService.isRecording) {
             CallRecorderService.stop(this)
             Toast.makeText(this, R.string.stopped, Toast.LENGTH_SHORT).show()
-            recordFab.postDelayed({ reload(); refreshButtons() }, 400)
         } else {
-            if (!hasCorePermissions()) {
+            // Manual recording only needs the microphone, not the phone-state permission.
+            if (!hasMicPermission()) {
+                Toast.makeText(this, R.string.need_mic, Toast.LENGTH_LONG).show()
                 requestPermissions()
                 return
             }
             CallRecorderService.start(this, null)
             Toast.makeText(this, R.string.recording, Toast.LENGTH_SHORT).show()
-            refreshButtons()
+            // Reflect the "recording" state immediately so a second tap stops it, rather than
+            // starting again — the service confirms/corrects this via its state broadcast.
+            setRecordingUi(true)
         }
     }
 
-    private fun refreshButtons() {
-        if (CallRecorderService.isRecording) {
+    private fun refreshButtons() = setRecordingUi(CallRecorderService.isRecording)
+
+    private fun setRecordingUi(recording: Boolean) {
+        if (recording) {
             recordFab.setText(R.string.stop_recording)
             recordFab.setIconResource(R.drawable.ic_stop)
         } else {
