@@ -68,6 +68,11 @@ class VideoLink:
         """A single file TurboDL can fetch (streams are playlists of many small pieces)."""
         return self.kind != "stream" and self.ext not in STREAM_EXTS
 
+    @property
+    def with_sound(self) -> bool:
+        """One complete video file that has both picture and sound."""
+        return self.kind == "video" and self.downloadable
+
 
 @dataclass
 class FindResult:
@@ -77,7 +82,7 @@ class FindResult:
     message: str = ""  # explanation when nothing usable was found
 
     def best(self) -> VideoLink | None:
-        return next((v for v in self.links if v.downloadable and v.kind == "video"), None) \
+        return next((v for v in self.links if v.with_sound), None) \
             or next((v for v in self.links if v.downloadable), None) \
             or (self.links[0] if self.links else None)
 
@@ -90,7 +95,13 @@ class FindResult:
 
 # ----------------------------------------------------------------- public ---
 
-def find_videos(url: str, use_ytdlp: bool = True, timeout: float = 20) -> FindResult:
+def find_videos(url: str, use_ytdlp: bool = True, timeout: float = 20,
+                with_sound_only: bool = True) -> FindResult:
+    """Find the video links behind `url`.
+
+    By default only complete video files with sound are returned; picture-only,
+    sound-only and stream (m3u8/mpd) links are left out.
+    """
     url = url.strip()
     if not re.match(r"https?://", url, re.I):
         url = "https://" + url
@@ -114,7 +125,7 @@ def find_videos(url: str, use_ytdlp: bool = True, timeout: float = 20) -> FindRe
             if direct:
                 result.links = [direct]
                 result.title = _title_from_url(final_url)
-                return result
+                return _filtered(result, with_sound_only)
             body = resp.read(MAX_PAGE_BYTES) if ctype in ("text/html", "application/xhtml+xml", "text/plain") else b""
     else:
         final_url, body = url, b""
@@ -123,7 +134,11 @@ def find_videos(url: str, use_ytdlp: bool = True, timeout: float = 20) -> FindRe
     if use_ytdlp:
         found = _with_ytdlp(url)
         if found and found.links:
-            return found
+            found = _filtered(found, with_sound_only)
+            if found.links or not body:
+                return found
+            # Only picture-only/sound-only/stream links: the page itself may still
+            # hold a complete file, so scan it before giving up.
         ytdlp_message = found.message if found else ""
         if ytdlp_message and not body:
             result.message = ytdlp_message
@@ -132,9 +147,32 @@ def find_videos(url: str, use_ytdlp: bool = True, timeout: float = 20) -> FindRe
         page = body.decode(_charset(resp), "replace")
         result.title, links = scan_page(page, final_url)
         result.links = _check_links(links, final_url, timeout)
-        if not result.links:
+        had_links = bool(result.links)
+        result = _filtered(result, with_sound_only)
+        if not result.links and not had_links:
             result.message = (ytdlp_message if "DRM" in ytdlp_message
                               else _nothing_found_message(page, use_ytdlp))
+        elif not result.links and ytdlp_message:
+            result.message = ytdlp_message
+    return result
+
+
+def _filtered(result: FindResult, with_sound_only: bool) -> FindResult:
+    """Keep only complete videos with sound, explaining why if none are left."""
+    if not with_sound_only:
+        return result
+    dropped = [v for v in result.links if not v.with_sound]
+    result.links = [v for v in result.links if v.with_sound]
+    if dropped and not result.links:
+        kinds = {v.kind for v in dropped}
+        if "video only" in kinds:
+            result.message = ("This site keeps the picture and the sound in separate files, so there is "
+                              "no single video with sound to download.")
+        elif "stream" in kinds:
+            result.message = ("This video is only offered as a stream (many small pieces), "
+                              "not as one video file with sound.")
+        else:
+            result.message = "Only sound was found here (no picture), so it was skipped."
     return result
 
 

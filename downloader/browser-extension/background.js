@@ -1,5 +1,6 @@
 // Watches the network traffic of each tab and remembers responses that are
-// videos (or stream playlists), so the popup can list their direct links.
+// complete videos with sound, so the popup can list their direct links.
+// Sound-only files and stream playlists (m3u8/mpd) are ignored.
 
 const MEDIA_EXT = /\.(mp4|m4v|webm|mkv|mov|avi|flv|wmv|3gp|ogv|m3u8|mpd|mp3|m4a|aac|ogg|opus|wav|flac)$/i;
 const STREAM_TYPES = {
@@ -15,6 +16,9 @@ const SEGMENT_EXT = /\.(ts|m4s|cmfv|cmfa)$/i;
 // Query parameters that change between pieces of the same file.
 const PIECE_PARAMS = ["range", "rn", "rbuf", "bytestart", "byteend", "_"];
 const MIN_SIZE = 64 * 1024;
+// YouTube formats that hold picture and sound together; every other format
+// there is picture-only or sound-only.
+const YT_WITH_SOUND = new Set(["18", "22", "37", "38", "43", "59", "78"]);
 const MAX_PER_TAB = 100;
 
 const tabs = new Map(); // tabId -> array of found items
@@ -59,14 +63,19 @@ function classify(details) {
   else if (ctype.startsWith("video/")) kind = "video";
   else if (ctype.startsWith("audio/")) kind = "audio";
   else if (MEDIA_EXT.test("." + ext) && /octet-stream|^$/.test(ctype)) kind = /mp3|m4a|aac|ogg|opus|wav|flac/.test(ext) ? "audio" : "video";
-  if (!kind) return null;
+  if (kind !== "video") return null; // only videos with sound
+  try {
+    const u = new URL(details.url);
+    if (u.hostname.endsWith(".googlevideo.com") && !YT_WITH_SOUND.has(u.searchParams.get("itag"))) return null;
+  } catch {
+    return null;
+  }
 
   let size = null;
   const range = header(headers, "content-range").match(/\/(\d+)\s*$/);
   if (range) size = Number(range[1]);
   else if (details.statusCode === 200 && header(headers, "content-length")) size = Number(header(headers, "content-length"));
-  if (kind === "stream") size = null; // the playlist's own size says nothing about the video
-  else if (size !== null && size < MIN_SIZE) return null; // icons, previews, ads
+  if (size !== null && size < MIN_SIZE) return null; // icons, previews, ads
 
   const quality = (decodeURIComponent(details.url).match(/(?<![0-9])(2160|1440|1080|720|540|480|360|240|144)p(?![a-z0-9])/i) || [])[1];
   return {
@@ -83,7 +92,7 @@ async function save(tabId) {
   const items = tabs.get(tabId) || [];
   if (items.length) await chrome.storage.session.set({ ["tab:" + tabId]: items });
   else await chrome.storage.session.remove("tab:" + tabId);
-  const n = items.filter((i) => i.kind !== "audio").length || items.length;
+  const n = items.length;
   chrome.action.setBadgeText({ tabId, text: n ? String(n) : "" }).catch(() => {});
   chrome.action.setBadgeBackgroundColor({ tabId, color: "#1f6feb" }).catch(() => {});
 }

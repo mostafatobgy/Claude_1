@@ -28,6 +28,7 @@ PAGES = {
     "/watch/3": """<html><head><title>Lecture</title><script type="application/ld+json">
         {"@context":"https://schema.org","@type":"VideoObject","name":"Lecture",
          "contentUrl":"http://HOST/media/lecture.mp4"}</script></head><body></body></html>""",
+    "/watch/streamonly": '<html><body><video src="/stream/master.m3u8"></video></body></html>',
     "/watch/none": "<html><head><title>Just text</title></head><body><p>hello</p></body></html>",
     "/watch/drm": "<html><body><script>initPlayer({drm:{widevine:{url:'/lic'}}})</script></body></html>",
 }
@@ -45,7 +46,7 @@ class Handler(BaseHTTPRequestHandler):
             ctype = "text/html; charset=utf-8"
         elif path.startswith("/media/") and "missing" not in path:
             body = VIDEO
-            ctype = "video/webm" if path.endswith(".webm") else "video/mp4"
+            ctype = {"webm": "video/webm", "mp3": "audio/mpeg"}.get(path.rsplit(".", 1)[-1], "video/mp4")
         elif path == "/watch/clip_360p.webm":
             body, ctype = VIDEO, "video/webm"
         elif path == "/stream/master.m3u8":
@@ -89,12 +90,25 @@ def test_html5_player(server):
 
 
 def test_links_inside_scripts(server):
-    r = find_videos(server + "/watch/2", use_ytdlp=False)
+    r = find_videos(server + "/watch/2", use_ytdlp=False, with_sound_only=False)
     assert r.title == "Match highlights"
     kinds = {v.url.split("/")[-1]: v.kind for v in r.links}
     assert kinds == {"hd_1080p.mp4?sig=a&e=1": "video", "master.m3u8": "stream"}
     assert r.best().height == 1080
     assert not [v for v in r.links if v.kind == "stream"][0].downloadable
+
+
+def test_only_videos_with_sound_by_default(server):
+    r = find_videos(server + "/watch/2", use_ytdlp=False)
+    assert [v.url.split("/")[-1] for v in r.links] == ["hd_1080p.mp4?sig=a&e=1"]
+
+    r = find_videos(server + "/watch/streamonly", use_ytdlp=False)
+    assert not r.links and "stream" in r.message
+
+    r = find_videos(server + "/media/song.mp3", use_ytdlp=False)
+    assert not r.links and "Only sound" in r.message
+    r = find_videos(server + "/media/song.mp3", use_ytdlp=False, with_sound_only=False)
+    assert [v.kind for v in r.links] == ["audio only"]
 
 
 def test_json_ld(server):
@@ -144,6 +158,7 @@ def test_ytdlp_info_mapping():
         ],
     }
     r = from_ytdlp_info(info, "https://www.youtube.com/watch?v=x")
+    assert [v.url for v in r.links if v.with_sound] == ["https://v/18"]
     assert [(v.url.rsplit("/", 1)[-1], v.kind) for v in r.links] == [
         ("18", "video"), ("137", "video only"), ("720.m3u8", "stream"), ("140", "audio only")]
     best = r.best()
@@ -175,7 +190,9 @@ def test_cli_find_and_download(server, tmp_path, capsys):
 
     assert cli.main(["find", "--no-ytdlp", "--json", server + "/watch/2"]) == 0
     data = json.loads(capsys.readouterr().out)
-    assert data["best"].endswith("hd_1080p.mp4?sig=a&e=1") and len(data["links"]) == 2
+    assert data["best"].endswith("hd_1080p.mp4?sig=a&e=1") and len(data["links"]) == 1
+    assert cli.main(["find", "--no-ytdlp", "--json", "--all", server + "/watch/2"]) == 0
+    assert len(json.loads(capsys.readouterr().out)["links"]) == 2
 
     assert cli.main(["find", "--no-ytdlp", "--download", "-d", str(tmp_path), server + "/watch/1"]) == 0
     assert (tmp_path / "Nile Sunset & Boats 720p.mp4").read_bytes() == VIDEO

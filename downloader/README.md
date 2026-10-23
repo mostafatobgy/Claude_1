@@ -5,7 +5,7 @@ connections to the server at once, each fetching a different part of the file.
 If the download stops — you pause it, close the app, the Wi‑Fi drops, the PC
 restarts — it **continues from where it stopped** instead of starting over.
 
-It can also **find the direct link of a video** on a web page, in two ways:
+It can also **find the direct link of a video with sound** on a web page, in two ways:
 the **Find video…** button in the app, and a **browser extension** that catches
 videos while they play. See [Getting video links](#getting-video-links).
 
@@ -34,15 +34,19 @@ for you.
 
 ### 1. “Find video…” in the app (or `turbodl find` on the command line)
 
-Paste the page address and click **Find video…**. You get a list of every video
-link on the page with its quality, type and size. Pick one and click **Download**
-(it downloads with TurboDL's multiple connections) or **Copy link**.
+Paste the page address and click **Find video…**. You get a list of the **videos
+with sound** on the page, with their quality and size. Pick one and click
+**Download** (it downloads with TurboDL's multiple connections) or **Copy link**.
+
+Everything else is skipped: picture-only files, sound-only files and stream
+playlists (`m3u8`/`mpd`). If a page has only those, TurboDL tells you why nothing
+was listed. On the command line, `--all` shows them anyway.
 
 ![Find video window](find-video.png)
 
 It looks for the video in this order:
 
-1. **The link is already a video** (`.mp4`, `.webm`, …) or a stream playlist.
+1. **The link is already a video file** (`.mp4`, `.webm`, …).
 2. **[yt-dlp](https://github.com/yt-dlp/yt-dlp)**, which understands 1,800+ sites:
    YouTube, Facebook, Instagram, X/Twitter, TikTok, Vimeo, Dailymotion, Reddit and
    more. It is built into the ready-made apps; from source, run `pip install yt-dlp`.
@@ -51,7 +55,8 @@ It looks for the video in this order:
    Each link found is checked with the server, and dead ones are dropped.
 
 ```bash
-turbodl find https://example.com/some-video-page            # list all links
+turbodl find https://example.com/some-video-page            # list the videos with sound
+turbodl find --all https://example.com/some-video-page      # also picture/sound-only and streams
 turbodl find --best https://example.com/some-video-page      # print only the best link
 turbodl find --download -d ~/Videos https://example.com/...  # download the best one
 turbodl find --json https://example.com/...                  # for other programs
@@ -60,8 +65,9 @@ turbodl find --json https://example.com/...                  # for other program
 ### 2. Browser extension (Chrome, Edge, Brave, Opera)
 
 Some players only build the video address while the video plays, so it is not in
-the page itself. The extension watches what the tab loads and lists every video
-and stream it sees. The toolbar icon shows how many it found.
+the page itself. The extension watches what the tab loads and lists every complete
+video with sound it sees (sound-only files and stream playlists are skipped). The
+toolbar icon shows how many it found.
 
 ![Extension popup](browser-extension/screenshot.png)
 
@@ -74,13 +80,14 @@ unpacked** → choose the folder.
 icon. Use **Copy link** and paste it into TurboDL, or **Download** to save it with
 the browser.
 
-### Types of link you'll see
+### Why a video may show fewer qualities than the site plays
 
-| Type | Meaning |
-|---|---|
-| **video** | A complete video file with sound — download it directly. |
-| **video only** / **audio only** | Big sites (e.g. YouTube) keep the best quality picture and the sound in separate files. Pick a *video* row to get both together. |
-| **stream** (`m3u8`/`mpd`) | A playlist of many small pieces, used for live TV and many players. It plays in VLC (*Media → Open Network Stream*). To save it as one file, use `yt-dlp "<link>"`. |
+Big sites, YouTube above all, keep their higher qualities (720p, 1080p and up) as
+a picture-only file plus a separate sound file, and many other players use
+streams. Because TurboDL lists only single files that have both picture and
+sound, on YouTube you will usually see only 360p, and some pages will show
+nothing. Joining picture and sound into one file needs an extra tool (ffmpeg),
+which TurboDL does not include yet.
 
 ### Limits
 
@@ -108,13 +115,15 @@ It depends on where the bottleneck is:
 In a test against a real server, a 55 MB file took 9.7 s with one connection and
 5.5 s with eight.
 
-## Get the app
+## Get the app (Windows)
 
-**Windows / macOS / Linux, ready to run:** open the repository's **Actions** tab →
-*TurboDL (test and build apps)* → the latest run → **Artifacts**, and download
-`TurboDL-Windows` (a single `TurboDL.exe`), `TurboDL-macOS` or `TurboDL-Linux`.
+Open the repository's **Actions** tab → *TurboDL (test and build apps)* → the
+latest run → **Artifacts**, and download `TurboDL-Windows`. Unzip it and
+double-click `TurboDL.exe`; nothing needs to be installed. Windows may say
+"Windows protected your PC" because the app is not signed with a paid certificate:
+click **More info → Run anyway**.
 
-**From source** (Python 3.10+):
+**From source** (Python 3.10+, also runs on macOS and Linux):
 
 ```bash
 cd downloader
@@ -132,6 +141,12 @@ On Linux the window needs Tk: `sudo apt install python3-tk`.
    start; try 16 for slow servers).
 3. Select a row to **Pause**, **Resume**, **Cancel** (deletes the partial file) or
    **Open** the finished file. Double-click a finished row to open it.
+4. **Right-click** a download for a menu: Open, Show in folder, Pause, Resume,
+   Copy link and Delete.
+5. To delete, select one or more downloads (Ctrl+A selects all) and press the
+   **Del** key, or use **Delete** in the menu or at the bottom. You're asked
+   first; tick **Also delete the files from my computer** to remove the files
+   too, otherwise they stay on disk and only leave the list.
 
 Settings and unfinished downloads are kept in `~/.turbodl/settings.json`.
 

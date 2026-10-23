@@ -1,7 +1,7 @@
 name: TurboDL (test and build apps)
 
-# Runs the download-accelerator tests, then builds a ready-to-run app for
-# Windows (.exe), macOS and Linux. Download them from the run's "Artifacts".
+# Runs the download-accelerator tests, then builds the ready-to-run Windows app
+# (TurboDL.exe). Download it from the run's "Artifacts".
 on:
   push:
     paths: ["downloader/**", ".github/workflows/turbodl.yml"]
@@ -50,10 +50,7 @@ jobs:
 
   build:
     needs: test
-    strategy:
-      matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
     timeout-minutes: 20
     defaults:
       run:
@@ -64,8 +61,10 @@ jobs:
         with:
           python-version: "3.13"
       - run: pip install pyinstaller yt-dlp
-      - run: pyinstaller --onefile --windowed --name TurboDL --collect-all yt_dlp TurboDL.pyw
+      - run: >-
+          pyinstaller --onefile --windowed --name TurboDL --icon turbodl/icon.ico
+          --add-data "turbodl/icon.ico;turbodl" --collect-all yt_dlp TurboDL.pyw
       - uses: actions/upload-artifact@v4
         with:
-          name: TurboDL-${{ runner.os }}
-          path: downloader/dist/*
+          name: TurboDL-Windows
+          path: downloader/dist/TurboDL.exe

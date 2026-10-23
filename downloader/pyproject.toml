@@ -23,6 +23,9 @@ turbodl-gui = "turbodl.gui:main"
 [tool.setuptools]
 packages = ["turbodl"]
 
+[tool.setuptools.package-data]
+turbodl = ["icon.ico", "icon.png"]
+
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]

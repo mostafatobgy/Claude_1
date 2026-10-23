@@ -53,6 +53,7 @@ class App:
         root.title(f"TurboDL {__version__} — Download Accelerator")
         root.geometry("980x520")
         root.minsize(760, 380)
+        self._set_icon()
         style = ttk.Style()
         if "clam" in style.theme_names() and sys.platform.startswith("linux"):
             style.theme_use("clam")
@@ -63,6 +64,16 @@ class App:
         self._restore_queue()
         root.protocol("WM_DELETE_WINDOW", self._on_close)
         root.after(REFRESH_MS, self._tick)
+
+    def _set_icon(self) -> None:
+        here = os.path.dirname(os.path.abspath(__file__))
+        try:
+            if sys.platform.startswith("win"):
+                self.root.iconbitmap(default=os.path.join(here, "icon.ico"))
+            else:
+                self.root.iconphoto(True, tk.PhotoImage(file=os.path.join(here, "icon.png")))
+        except tk.TclError:
+            pass  # icon file missing: keep the default one
 
     # ------------------------------------------------------------------ UI
 
@@ -114,13 +125,19 @@ class App:
         self.tree.pack(side="left", fill="both", expand=True)
         scroll.pack(side="right", fill="y")
         self.tree.bind("<Double-1>", lambda e: self.open_file())
+        self.tree.bind("<Delete>", lambda e: self.delete())
+        self.tree.bind("<Control-a>", lambda e: self.tree.selection_set(self.tree.get_children()))
+        self.tree.bind("<Button-3>", self._context_menu)  # right click
+        if sys.platform == "darwin":
+            self.tree.bind("<Button-2>", self._context_menu)
+        self.menu = tk.Menu(self.root, tearoff=0)
         self.tree.tag_configure("done", foreground="#1a7f37")
         self.tree.tag_configure("error", foreground="#cf222e")
 
         bottom = ttk.Frame(self.root)
         bottom.pack(fill="x", **pad)
         for text, cmd in (("Pause", self.pause), ("Resume", self.resume), ("Cancel", self.cancel),
-                          ("Remove from list", self.remove), ("Open file", self.open_file),
+                          ("Delete", self.delete), ("Open file", self.open_file),
                           ("Open folder", self.open_folder)):
             ttk.Button(bottom, text=text, command=cmd).pack(side="left", padx=2)
         self.total_var = tk.StringVar()
@@ -207,13 +224,76 @@ class App:
                 if dl.state != "done":
                     dl.cancel()
 
-    def remove(self) -> None:
-        for item, dl in self._selected():
-            if dl.state not in ("done", "cancelled", "error", "paused"):
-                dl.pause()
+    def delete(self) -> None:
+        """Delete key / menu: remove the selected downloads, optionally with their files."""
+        sel = self._selected()
+        if not sel:
+            return
+        what = f"“{sel[0][1].name}”" if len(sel) == 1 else f"these {len(sel)} downloads"
+        answer = DeleteDialog(self.root, f"Delete {what} from the list?").result
+        if answer is not None:
+            self.remove([item for item, _ in sel], delete_files=answer)
+
+    def remove(self, items: list[str] | None = None, delete_files: bool = False) -> None:
+        """Take downloads off the list. With delete_files, also remove what is on disk."""
+        for item in items if items is not None else [i for i, _ in self._selected()]:
+            dl = self.downloads.pop(item, None)
+            if dl is None:
+                continue
             self.tree.delete(item)
-            del self.downloads[item]
+            if dl.state == "done":
+                if delete_files and dl.path:
+                    try:
+                        os.remove(dl.path)
+                    except OSError:
+                        pass
+            elif delete_files:
+                dl.cancel()  # stops it and deletes the partial file
+            elif dl.state in ("downloading", "connecting", "verifying", "queued"):
+                dl.pause()  # keeps the partial file; adding the same link again resumes it
         self._save_settings()
+
+    def copy_link(self) -> None:
+        links = [dl.url for _, dl in self._selected()]
+        if links:
+            self.root.clipboard_clear()
+            self.root.clipboard_append("\n".join(links))
+
+    def show_in_folder(self) -> None:
+        sel = self._selected()
+        if not sel:
+            return
+        dl = sel[0][1]
+        if sys.platform.startswith("win") and dl.state == "done" and dl.path and os.path.exists(dl.path):
+            subprocess.Popen(["explorer", "/select,", os.path.normpath(dl.path)])
+        else:
+            self.open_folder()
+
+    def _context_menu(self, event) -> None:
+        item = self.tree.identify_row(event.y)
+        if not item:
+            return
+        if item not in self.tree.selection():
+            self.tree.selection_set(item)
+        self.tree.focus(item)
+        states = {dl.state for _, dl in self._selected()}
+        running = states & {"downloading", "connecting", "verifying"}
+        m = self.menu
+        m.delete(0, "end")
+        m.add_command(label="Open", command=self.open_file, state="normal" if "done" in states else "disabled")
+        m.add_command(label="Show in folder", command=self.show_in_folder)
+        m.add_separator()
+        m.add_command(label="Pause", command=self.pause, state="normal" if running else "disabled")
+        m.add_command(label="Resume", command=self.resume,
+                      state="normal" if states & {"paused", "error"} else "disabled")
+        m.add_separator()
+        m.add_command(label="Copy link", command=self.copy_link)
+        m.add_separator()
+        m.add_command(label="Delete…", accelerator="Del", command=self.delete)
+        try:
+            m.tk_popup(event.x_root, event.y_root)
+        finally:
+            m.grab_release()
 
     def open_file(self) -> None:
         for _, dl in self._selected():
@@ -304,6 +384,39 @@ class App:
         self.root.destroy()
 
 
+class DeleteDialog:
+    """Asks before deleting; `result` is None (cancelled) or whether to delete files too."""
+
+    def __init__(self, parent: tk.Misc, question: str):
+        self.result: bool | None = None
+        self.win = win = tk.Toplevel(parent)
+        win.title("Delete")
+        win.resizable(False, False)
+        win.transient(parent)
+        ttk.Label(win, text=question, wraplength=380).pack(anchor="w", padx=16, pady=(16, 8))
+        self.files_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(win, text="Also delete the files from my computer",
+                        variable=self.files_var).pack(anchor="w", padx=16)
+        buttons = ttk.Frame(win)
+        buttons.pack(fill="x", padx=16, pady=16)
+        ttk.Button(buttons, text="Cancel", command=win.destroy).pack(side="right", padx=(6, 0))
+        ok = ttk.Button(buttons, text="Delete", style="Accent.TButton", command=self._ok)
+        ok.pack(side="right")
+        win.bind("<Return>", lambda e: self._ok())
+        win.bind("<Escape>", lambda e: win.destroy())
+        win.update_idletasks()
+        x = parent.winfo_rootx() + (parent.winfo_width() - win.winfo_width()) // 2
+        y = parent.winfo_rooty() + (parent.winfo_height() - win.winfo_height()) // 3
+        win.geometry(f"+{max(x, 0)}+{max(y, 0)}")
+        ok.focus_set()
+        win.grab_set()
+        parent.wait_window(win)
+
+    def _ok(self) -> None:
+        self.result = self.files_var.get()
+        self.win.destroy()
+
+
 class FinderDialog:
     """Shows the video links found behind a page; copy one or download it."""
 
@@ -320,9 +433,9 @@ class FinderDialog:
 
         frame = ttk.Frame(win)
         frame.pack(fill="both", expand=True, padx=10)
-        cols = ("quality", "kind", "ext", "size", "note")
+        cols = ("quality", "ext", "size", "note")
         self.tree = ttk.Treeview(frame, columns=cols, show="headings", selectmode="browse")
-        for col, title, width in (("quality", "Quality", 70), ("kind", "Type", 100), ("ext", "Format", 60),
+        for col, title, width in (("quality", "Quality", 70), ("ext", "Format", 60),
                                   ("size", "Size", 85), ("note", "Details / link", 500)):
             self.tree.heading(col, text=title)
             self.tree.column(col, width=width, anchor="w" if col == "note" else "center", stretch=col == "note")
@@ -365,12 +478,12 @@ class FinderDialog:
             self.status.set(result.message or "No video found on this page.")
             return
         count = len(result.links)
-        self.status.set(f"{result.title or 'Video'} — found {count} link{'s' * (count != 1)}. "
+        self.status.set(f"{result.title or 'Video'} — found {count} video{'s' * (count != 1)} with sound. "
                         "Pick one and click Download, or copy its link.")
         best = result.best()
         for i, v in enumerate(result.links):
             self.tree.insert("", "end", iid=str(i), values=(
-                v.quality or "-", v.kind, v.ext, human_size(v.size) if v.size else "",
+                v.quality or "-", v.ext, human_size(v.size) if v.size else "",
                 (v.note + "  ·  " if v.note else "") + v.url))
             if v is best:
                 self.tree.selection_set(str(i))

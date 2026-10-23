@@ -36,6 +36,7 @@ const server = http.createServer((req, res) => {
         fetch("/live/master.m3u8");
         fetch("/live/seg_001.ts");
         fetch("/thumbs/preview.mp4");
+        fetch("/audio/track.m4a");
       </script>`);
     case "/next":
       res.writeHead(200, { "Content-Type": "text/html" });
@@ -44,6 +45,7 @@ const server = http.createServer((req, res) => {
     case "/live/master.m3u8": return media("application/vnd.apple.mpegurl", Buffer.from("#EXTM3U\n"));
     case "/live/seg_001.ts": return media("video/mp2t", big);
     case "/thumbs/preview.mp4": return media("video/mp4", Buffer.alloc(10_000));
+    case "/audio/track.m4a": return media("audio/mp4", big);
     default: res.writeHead(404); res.end();
   }
 });
@@ -67,16 +69,17 @@ try {
   const items = await worker.evaluate((id) => chrome.storage.session.get("tab:" + id).then((s) => s["tab:" + id] || []), tabId);
   const caught = items.map((i) => `${i.kind} ${new URL(i.url).pathname} ${i.quality} ${i.size ?? ""}`.trim()).sort();
   console.log("caught:", caught);
-  assert.deepEqual(caught, ["stream /live/master.m3u8", `video /cdn/movie_1080p.mp4 1080p ${big.length}`]);
+  // Only the video with sound: the stream playlist, its piece, the sound-only
+  // file and the tiny preview are all skipped.
+  assert.deepEqual(caught, [`video /cdn/movie_1080p.mp4 1080p ${big.length}`]);
   assert.ok(items.find((i) => i.kind === "video").url.includes("token="), "keeps the full signed address");
 
   const popup = await ctx.newPage();
   await popup.setViewportSize({ width: 440, height: 300 });
   await popup.goto(`chrome-extension://${extId}/popup.html?tab=${tabId}`);
   await popup.waitForSelector("li");
-  assert.equal(await popup.locator("li").count(), 2);
+  assert.equal(await popup.locator("li").count(), 1);
   assert.match(await popup.locator("li .name").first().textContent(), /movie_1080p\.mp4/);
-  assert.equal(await popup.locator("li").nth(1).locator("button", { hasText: "Download" }).isDisabled(), true);
   if (process.argv[2]) await popup.screenshot({ path: process.argv[2] });
 
   await page.goto(origin + "/next");

@@ -64,7 +64,8 @@ def find_main(argv: list[str]) -> int:
 
     p = argparse.ArgumentParser(
         prog="turbodl find",
-        description="Show the direct video links behind a web page (YouTube and other sites need yt-dlp).",
+        description="Show the direct links of the videos (with sound) behind a web page "
+                    "(YouTube and other sites need yt-dlp).",
     )
     p.add_argument("url", metavar="PAGE_URL")
     p.add_argument("-b", "--best", action="store_true", help="print only the best link (for scripts)")
@@ -73,9 +74,11 @@ def find_main(argv: list[str]) -> int:
     p.add_argument("-c", "--connections", type=int, default=DEFAULT_CONNECTIONS)
     p.add_argument("-d", "--dir", default=".", help="folder for --download")
     p.add_argument("--no-ytdlp", action="store_true", help="only use the built-in page scan")
+    p.add_argument("--all", action="store_true",
+                   help="also list picture-only, sound-only and stream links (default: videos with sound only)")
     args = p.parse_args(argv)
 
-    result = find_videos(args.url, use_ytdlp=not args.no_ytdlp)
+    result = find_videos(args.url, use_ytdlp=not args.no_ytdlp, with_sound_only=not args.all)
     if args.json:
         import dataclasses
         import json
