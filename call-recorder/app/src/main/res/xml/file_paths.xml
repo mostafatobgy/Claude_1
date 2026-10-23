@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Matches getExternalFilesDir(MUSIC) so recordings can be shared via a content:// URI. -->
+    <external-files-path name="recordings" path="Music/" />
+</paths>

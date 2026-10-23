@@ -1,0 +1,39 @@
+name: Build Call Recorder APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "call-recorder/**"
+      - ".github/workflows/call-recorder-apk.yml"
+
+permissions:
+  contents: write   # to publish the APK as a release download
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: call-recorder
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk call-recorder.apk
+      - name: Publish at a fixed download link
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view recorder >/dev/null 2>&1 || \
+            gh release create recorder --title "مسجّل المكالمات" --notes "أحدث نسخة من تطبيق مسجّل المكالمات. التحميل: call-recorder.apk"
+          gh release upload recorder call-recorder.apk --clobber
+          gh release edit recorder --notes "أحدث نسخة من تطبيق مسجّل المكالمات (رقم ${{ github.run_number }}). التحميل: call-recorder.apk"
