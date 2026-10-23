@@ -64,7 +64,20 @@ jobs:
       - run: >-
           pyinstaller --onefile --windowed --name TurboDL --icon turbodl/icon.ico
           --add-data "turbodl/icon.ico;turbodl" --collect-all yt_dlp TurboDL.pyw
+      # yt-dlp needs a JavaScript runtime to read YouTube with all of its app
+      # profiles; without one it falls back to a single profile that YouTube
+      # sometimes serves only encrypted video to.
+      - name: Add Deno next to TurboDL.exe
+        shell: pwsh
+        run: |
+          Invoke-WebRequest https://github.com/denoland/deno/releases/latest/download/deno-x86_64-pc-windows-msvc.zip -OutFile deno.zip
+          Expand-Archive deno.zip -DestinationPath dist -Force
+          dist/deno.exe --version
+          Set-Content dist/README.txt "Keep deno.exe in the same folder as TurboDL.exe: TurboDL uses it to read YouTube videos. Start the app with TurboDL.exe."
       - uses: actions/upload-artifact@v4
         with:
           name: TurboDL-Windows
-          path: downloader/dist/TurboDL.exe
+          path: |
+            downloader/dist/TurboDL.exe
+            downloader/dist/deno.exe
+            downloader/dist/README.txt

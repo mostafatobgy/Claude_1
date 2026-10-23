@@ -98,7 +98,25 @@ which TurboDL does not include yet.
   own connection. Download soon after you find them.
 - Sites change often. If a site stops working, update yt-dlp
   (`pip install -U yt-dlp`, or download the latest app build, which is rebuilt
-  every week). For YouTube, yt-dlp may also need [Deno](https://deno.com) installed.
+  every week).
+
+### YouTube says "encrypted"?
+
+yt-dlp reads YouTube by asking as one of several YouTube apps (TV, phone, web…).
+YouTube sometimes serves **only encrypted copies to one of those apps** even for
+normal videos ([yt-dlp issue #12563](https://github.com/yt-dlp/yt-dlp/issues/12563)).
+TurboDL handles this in two ways:
+
+- The Windows app ships **Deno** (`deno.exe`), a JavaScript runtime yt-dlp needs
+  to use all of YouTube's app profiles. Without it, yt-dlp can use only one. When
+  running from source, install Deno from [deno.com](https://deno.com) or put
+  `deno`/`deno.exe` in the `downloader` folder.
+- If the first try gives no video with sound, TurboDL **asks again as other
+  YouTube apps** before giving up.
+
+If YouTube still sends only encrypted copies, it's either a film or show bought or
+rented on YouTube (truly encrypted, can't be downloaded) or a temporary block on
+YouTube's side — try again later with the newest build.
 - Only download videos you have the right to save: your own, freely licensed
   ones, or ones the site allows you to download.
 
@@ -119,7 +137,8 @@ In a test against a real server, a 55 MB file took 9.7 s with one connection and
 
 Open the repository's **Actions** tab → *TurboDL (test and build apps)* → the
 latest run → **Artifacts**, and download `TurboDL-Windows`. Unzip it and
-double-click `TurboDL.exe`; nothing needs to be installed. Windows may say
+double-click `TurboDL.exe`; nothing needs to be installed. Keep `deno.exe` in the
+same folder: TurboDL uses it to read YouTube (see below). Windows may say
 "Windows protected your PC" because the app is not signed with a paid certificate:
 click **More info → Run anyway**.
 

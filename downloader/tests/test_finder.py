@@ -5,8 +5,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
-from turbodl import cli
-from turbodl.finder import find_videos, from_ytdlp_info, scan_page, ytdlp_available
+from turbodl import cli, finder
+from turbodl.finder import FindResult, VideoLink, find_videos, from_ytdlp_info, scan_page, ytdlp_available
 
 VIDEO = b"\x00\x00\x00\x18ftypmp42" + os.urandom(300_000)
 
@@ -121,11 +121,63 @@ def test_direct_video_link(server):
     assert len(r.links) == 1 and r.links[0].source == "direct" and r.links[0].size == len(VIDEO)
 
 
-def test_nothing_found_and_drm_messages(server):
+def test_nothing_found_message(server):
     r = find_videos(server + "/watch/none", use_ytdlp=False)
     assert not r.links and "browser extension" in r.message
+    # Words like "widevine" in a page's scripts do not make its video encrypted
+    # (YouTube's own page contains them), so no DRM claim from page text.
     r = find_videos(server + "/watch/drm", use_ytdlp=False)
+    assert not r.links and "DRM" not in r.message
+
+
+def test_drm_only_when_nothing_usable_is_left():
+    clean = {"url": "https://v/18", "ext": "mp4", "vcodec": "avc1", "acodec": "mp4a", "protocol": "https"}
+    # yt-dlp sets _has_drm when *some* formats were encrypted and dropped.
+    r = from_ytdlp_info({"title": "t", "_has_drm": True, "formats": [clean]}, "https://x")
+    assert r.links and not r.message
+    r = from_ytdlp_info({"title": "t", "_has_drm": True, "formats": []}, "https://x")
     assert not r.links and "DRM" in r.message
+
+
+def _fake_extract(results, calls):
+    def extract(url, extractor_args=None):
+        calls.append(extractor_args)
+        return results.pop(0)
+    return extract
+
+
+def test_youtube_retries_other_player_clients(monkeypatch):
+    good = VideoLink("https://v/18", "mp4", "video", 360, source="yt-dlp")
+    calls = []
+    monkeypatch.setattr(finder, "_ytdlp_extract", _fake_extract(
+        [FindResult("u", message=finder.DRM_MESSAGE), FindResult("u", "Talk", [good])], calls))
+    r = finder._with_ytdlp("https://www.youtube.com/watch?v=abc")
+    assert r.links == [good] and not r.message
+    assert calls == [None, {"youtube": {"player_client": finder.YOUTUBE_FALLBACK_CLIENTS}}]
+
+
+def test_youtube_still_encrypted_gets_clear_message(monkeypatch):
+    calls = []
+    monkeypatch.setattr(finder, "_ytdlp_extract", _fake_extract(
+        [FindResult("u", message=finder.DRM_MESSAGE), FindResult("u", message=finder.DRM_MESSAGE)], calls))
+    r = finder._with_ytdlp("https://youtu.be/abc")
+    assert not r.links and r.message == finder.YOUTUBE_DRM_MESSAGE
+
+
+def test_other_sites_are_not_retried(monkeypatch):
+    calls = []
+    monkeypatch.setattr(finder, "_ytdlp_extract", _fake_extract([FindResult("u", message="x")], calls))
+    finder._with_ytdlp("https://vimeo.com/1")
+    assert calls == [None]
+
+
+def test_finds_deno_next_to_the_app(tmp_path, monkeypatch):
+    (tmp_path / "deno.exe").write_bytes(b"")
+    monkeypatch.setattr(finder.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(finder.sys, "executable", str(tmp_path / "TurboDL.exe"))
+    assert finder.js_runtimes() == {"deno": {"path": str(tmp_path / "deno.exe")}}
+    monkeypatch.setattr(finder.sys, "executable", str(tmp_path / "elsewhere" / "TurboDL.exe"))
+    assert finder.js_runtimes() == {"deno": {}}  # yt-dlp then looks on the PATH
 
 
 def test_unreachable_page():

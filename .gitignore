@@ -4,3 +4,5 @@ site/news.json
 builder/translations.json
 builder/notified.json
 node_modules/
+downloader/deno
+downloader/deno.exe

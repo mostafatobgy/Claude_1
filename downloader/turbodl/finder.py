@@ -4,7 +4,8 @@ Three ways, tried in order:
 
 1. The link already points at a video file or stream playlist.
 2. yt-dlp, if installed (`pip install yt-dlp`): knows how to read 1,800+ sites
-   such as YouTube, Vimeo, Facebook, X/Twitter, TikTok and Dailymotion.
+   such as YouTube, Vimeo, Facebook, X/Twitter, TikTok and Dailymotion. For
+   YouTube it also needs Deno (see js_runtimes()).
 3. A built-in page scan: reads the page's HTML and scripts for <video>/<source>
    tags, og:video tags, JSON-LD metadata and any .mp4/.webm/.m3u8/.mpd address.
 
@@ -17,7 +18,9 @@ from __future__ import annotations
 import concurrent.futures
 import html
 import json
+import os
 import re
+import sys
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -38,6 +41,15 @@ STREAM_TYPES = {
 }
 MAX_PAGE_BYTES = 8 * 1024 * 1024
 MAX_CHECKS = 25  # how many found links to probe for size/type
+# YouTube "player clients" (app profiles) to try when the default ones give no
+# video with sound. YouTube sometimes marks every video as encrypted for one
+# profile (see yt-dlp issue #12563) while others get the normal files.
+YOUTUBE_FALLBACK_CLIENTS = ["android_vr", "web_safari", "mweb", "web_embedded", "tv_simply"]
+DRM_MESSAGE = "This video is protected with DRM (encrypted), so it cannot be downloaded."
+YOUTUBE_DRM_MESSAGE = (
+    "YouTube only offered this video in encrypted form. Movies and shows bought or rented on YouTube "
+    "are truly encrypted and cannot be downloaded. For a normal video this is usually temporary on "
+    "YouTube's side: try again later, and use the newest TurboDL (it is rebuilt every week).")
 
 # A media address inside HTML, JavaScript or JSON (after "\/" escapes are undone).
 _EXT_ALT = "|".join(e for e in VIDEO_EXTS + STREAM_EXTS if e != "ts")
@@ -135,11 +147,15 @@ def find_videos(url: str, use_ytdlp: bool = True, timeout: float = 20,
         found = _with_ytdlp(url)
         if found and found.links:
             found = _filtered(found, with_sound_only)
-            if found.links or not body:
+            if found.links or not body or _is_youtube(url):
                 return found
             # Only picture-only/sound-only/stream links: the page itself may still
             # hold a complete file, so scan it before giving up.
         ytdlp_message = found.message if found else ""
+        if found and not found.links and _is_youtube(url):
+            # YouTube pages hold no plain video links, so a page scan would only
+            # replace yt-dlp's specific reason with a generic one.
+            return found
         if ytdlp_message and not body:
             result.message = ytdlp_message
 
@@ -150,8 +166,7 @@ def find_videos(url: str, use_ytdlp: bool = True, timeout: float = 20,
         had_links = bool(result.links)
         result = _filtered(result, with_sound_only)
         if not result.links and not had_links:
-            result.message = (ytdlp_message if "DRM" in ytdlp_message
-                              else _nothing_found_message(page, use_ytdlp))
+            result.message = ytdlp_message or _nothing_found_message(use_ytdlp)
         elif not result.links and ytdlp_message:
             result.message = ytdlp_message
     return result
@@ -297,25 +312,64 @@ def _collect_json_ld(node, out: list[tuple[str, str]]) -> None:
 
 def _with_ytdlp(url: str) -> FindResult | None:
     try:
-        import yt_dlp
+        import yt_dlp  # noqa: F401
     except ImportError:
         return None
+    result = _ytdlp_extract(url)
+    if _is_youtube(url) and not any(v.with_sound for v in result.links):
+        retry = _ytdlp_extract(url, {"youtube": {"player_client": YOUTUBE_FALLBACK_CLIENTS}})
+        if any(v.with_sound for v in retry.links) or (retry.links and not result.links):
+            result = retry
+    if not result.links and "DRM" in result.message and _is_youtube(url):
+        result.message = YOUTUBE_DRM_MESSAGE
+    return result
+
+
+def _ytdlp_extract(url: str, extractor_args: dict | None = None) -> FindResult:
+    import yt_dlp
+
     opts = {"quiet": True, "no_warnings": True, "skip_download": True, "noplaylist": False,
-            "extract_flat": False, "playlistend": 20, "logger": _QuietLogger()}
+            "extract_flat": False, "playlistend": 20, "logger": _QuietLogger(),
+            "js_runtimes": js_runtimes()}
+    if extractor_args:
+        opts["extractor_args"] = extractor_args
     try:
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=False)
             info = ydl.sanitize_info(info)
     except Exception as exc:  # noqa: BLE001 - yt-dlp raises many kinds
         msg = re.sub(r"^ERROR:\s*", "", str(exc)).strip()
-        if "drm" in msg.lower():
-            msg = "This video is protected with DRM (encrypted), so it cannot be downloaded."
+        if "Unsupported URL" in msg:
+            msg = ""  # not a site yt-dlp knows; the page scan explains better
+        elif "drm" in msg.lower():
+            msg = DRM_MESSAGE
         return FindResult(page_url=url, message=msg)
     result = from_ytdlp_info(info, url)
     if (info.get("extractor_key") or "").lower() in ("generic", "html5mediaembed"):
         # yt-dlp's catch-all page reader does not test what it finds; drop dead links.
         result.links = _check_links(result.links, url, 20)
     return result
+
+
+def js_runtimes() -> dict:
+    """Tell yt-dlp where Deno is. With it, yt-dlp can use all of YouTube's app profiles.
+
+    The Windows app ships deno.exe in the same folder as TurboDL.exe; otherwise
+    yt-dlp looks for Deno on the PATH.
+    """
+    folders = [os.path.dirname(sys.executable)] if getattr(sys, "frozen", False) else []
+    folders.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # source checkout
+    for folder in folders:
+        for name in ("deno.exe", "deno"):
+            path = os.path.join(folder, name)
+            if os.path.isfile(path):
+                return {"deno": {"path": path}}
+    return {"deno": {}}
+
+
+def _is_youtube(url: str) -> bool:
+    host = (urllib.parse.urlparse(url).hostname or "").lower()
+    return host == "youtu.be" or host == "youtube.com" or host.endswith(".youtube.com")
 
 
 class _QuietLogger:
@@ -342,8 +396,10 @@ def from_ytdlp_info(info: dict, page_url: str) -> FindResult:
             link = _from_ytdlp_format(f, video, prefix)
             if link and all(link.url != v.url for v in result.links):
                 result.links.append(link)
-    if videos and all(v.get("_has_drm") or v.get("has_drm") for v in videos):
-        result.message = "This video is protected with DRM (encrypted), so it cannot be downloaded."
+    # yt-dlp's "_has_drm" means *some* formats were encrypted and left out, so
+    # only call the video encrypted when nothing usable is left.
+    if not result.links and videos and all(v.get("_has_drm") or v.get("has_drm") for v in videos):
+        result.message = DRM_MESSAGE
     result.links.sort(key=_rank)
     return result
 
@@ -476,10 +532,9 @@ def _check_links(links: list[VideoLink], referer: str, timeout: float) -> list[V
     return checked
 
 
-def _nothing_found_message(page: str, use_ytdlp: bool) -> str:
-    low = page.lower()
-    if "widevine" in low or "playready" in low or "fairplay" in low:
-        return "This page plays DRM-protected (encrypted) video, which cannot be downloaded."
+def _nothing_found_message(use_ytdlp: bool) -> str:
+    # Pages are not judged "encrypted" from their text: words like "widevine" also
+    # appear in players (YouTube's included) that play normal, unencrypted video.
     hint = "" if not use_ytdlp or ytdlp_available() else (
         " Installing yt-dlp (pip install yt-dlp) adds support for YouTube, Facebook, X, TikTok and many more sites.")
     return ("No video address was found in this page. The video may be created by scripts after the page "
