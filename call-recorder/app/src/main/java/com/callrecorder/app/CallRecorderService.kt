@@ -29,7 +29,7 @@ class CallRecorderService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_START -> start(intent.getStringExtra(EXTRA_LABEL))
+            ACTION_START -> start(intent.getStringExtra(EXTRA_NUMBER))
             ACTION_STOP -> stopSelf()
             else -> stopSelf()
         }
@@ -37,11 +37,11 @@ class CallRecorderService : Service() {
     }
 
     @Suppress("DEPRECATION") // the no-arg MediaRecorder() is the only option below API 31
-    private fun start(label: String?) {
+    private fun start(number: String?) {
         if (recorder != null) return // already recording
-        startForeground(NOTIF_ID, buildNotification(label))
+        startForeground(NOTIF_ID, buildNotification(number))
 
-        val file = Storage.newFile(this, label)
+        val file = Storage.newFile(this, number)
         outputFile = file
         val rec = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) MediaRecorder(this) else MediaRecorder()
 
@@ -101,7 +101,7 @@ class CallRecorderService : Service() {
         super.onDestroy()
     }
 
-    private fun buildNotification(label: String?): Notification {
+    private fun buildNotification(number: String?): Notification {
         val mgr = getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
@@ -109,9 +109,11 @@ class CallRecorderService : Service() {
             ).apply { description = getString(R.string.channel_desc) }
             mgr.createNotificationChannel(channel)
         }
-        val who = if (label.isNullOrBlank() || label == "unknown")
+        // Show the saved contact name when we can resolve it, otherwise the raw number.
+        val display = Contacts.nameFor(this, number) ?: number
+        val who = if (display.isNullOrBlank() || display == "unknown")
             getString(R.string.notif_text_generic)
-        else getString(R.string.notif_text_with, label)
+        else getString(R.string.notif_text_with, display)
 
         val open = android.app.PendingIntent.getActivity(
             this, 0, Intent(this, MainActivity::class.java),
@@ -130,7 +132,7 @@ class CallRecorderService : Service() {
     companion object {
         const val ACTION_START = "com.callrecorder.app.START"
         const val ACTION_STOP = "com.callrecorder.app.STOP"
-        const val EXTRA_LABEL = "label"
+        const val EXTRA_NUMBER = "number"
         private const val CHANNEL_ID = "recording"
         private const val NOTIF_ID = 1
 
@@ -139,12 +141,18 @@ class CallRecorderService : Service() {
         var isRecording: Boolean = false
             private set
 
-        fun start(context: Context, label: String?) {
+        fun start(context: Context, number: String?) {
             val i = Intent(context, CallRecorderService::class.java).apply {
                 action = ACTION_START
-                putExtra(EXTRA_LABEL, label)
+                putExtra(EXTRA_NUMBER, number)
             }
-            androidx.core.content.ContextCompat.startForegroundService(context, i)
+            // On Android 12+ a mic foreground service started from the background can be refused;
+            // catch it so an auto-record attempt during a call never crashes the phone app.
+            try {
+                androidx.core.content.ContextCompat.startForegroundService(context, i)
+            } catch (_: Exception) {
+                isRecording = false
+            }
         }
 
         fun stop(context: Context) {

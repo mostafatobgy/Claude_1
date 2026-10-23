@@ -16,8 +16,9 @@ class PhoneStateReceiver : BroadcastReceiver() {
         if (!Prefs.autoRecord(context)) return
 
         val state = intent.getStringExtra(TelephonyManager.EXTRA_STATE)
-        // The number is only present when READ_CALL_LOG is held; otherwise it is null and we
-        // record under "unknown". We intentionally do not request that extra permission.
+        // The number is present for incoming calls when READ_CALL_LOG is held. For outgoing calls
+        // the system sends it via NEW_OUTGOING_CALL; here we record under the number when we have
+        // it and "unknown" otherwise. The number is later matched to a saved contact name.
         val number = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER)
 
         when (state) {

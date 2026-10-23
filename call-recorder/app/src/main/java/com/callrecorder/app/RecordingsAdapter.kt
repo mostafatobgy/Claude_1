@@ -8,7 +8,7 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
 class RecordingsAdapter(
-    private var items: List<Recording>,
+    private var items: List<RecordingItem>,
     private val onPlay: (Recording) -> Unit,
     private val onShare: (Recording) -> Unit,
     private val onDelete: (Recording) -> Unit,
@@ -28,17 +28,17 @@ class RecordingsAdapter(
     }
 
     override fun onBindViewHolder(holder: VH, position: Int) {
-        val r = items[position]
-        holder.title.text = r.title
-        holder.subtitle.text = "${r.whenText}  ·  ${formatSize(r.sizeBytes)}"
-        holder.play.setOnClickListener { onPlay(r) }
-        holder.share.setOnClickListener { onShare(r) }
-        holder.delete.setOnClickListener { onDelete(r) }
+        val item = items[position]
+        holder.title.text = item.title
+        holder.subtitle.text = item.subtitle
+        holder.play.setOnClickListener { onPlay(item.recording) }
+        holder.share.setOnClickListener { onShare(item.recording) }
+        holder.delete.setOnClickListener { onDelete(item.recording) }
     }
 
     override fun getItemCount(): Int = items.size
 
-    fun submit(newItems: List<Recording>) {
+    fun submit(newItems: List<RecordingItem>) {
         items = newItems
         notifyDataSetChanged()
     }

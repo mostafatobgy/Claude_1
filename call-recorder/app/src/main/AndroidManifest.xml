@@ -5,6 +5,10 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Know when a call starts and ends so recording can start/stop automatically. -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <!-- Read the caller's number so the recording can be labelled with it. -->
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <!-- Match that number to a saved contact name. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
     <!-- Keep recording while the app is in the background, as a visible microphone service. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
