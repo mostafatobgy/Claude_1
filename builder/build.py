@@ -12,7 +12,7 @@ from rank import classify_and_score, group_stories, tier
 from translate import Translator
 from trends import fetch_trends, group_trends
 from wiki import fetch_wiki
-from youtube import fetch_youtube, group_videos
+from youtube import fetch_youtube, group_videos, status as youtube_status
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("build")
@@ -96,6 +96,7 @@ def main():
     log.info("wrote %d stories to %s", len(data["stories"]), OUT)
     alerts = notify(data["stories"])
     print(f"::notice::alerts sent: {alerts}")
+    print(f"::notice::youtube: {youtube_status['state']}; errors: {youtube_status['errors'][:4] or 'none'}")
 
 
 if __name__ == "__main__":

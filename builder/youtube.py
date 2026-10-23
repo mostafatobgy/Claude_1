@@ -15,6 +15,7 @@ COUNTRIES = {  # code: (Arabic name, region)
 }
 PER_COUNTRY = 15
 PER_REGION = 15
+status = {"state": "not run", "errors": []}  # shown on the Actions run page
 
 
 def parse_videos(data: dict, geo: str) -> list[dict]:
@@ -39,7 +40,9 @@ def fetch_youtube(client: httpx.Client | None = None, key: str | None = None) ->
     key = key if key is not None else os.environ.get("YOUTUBE_API_KEY", "").strip()
     if not key:
         log.info("YOUTUBE_API_KEY not set, YouTube trends disabled")
+        status["state"] = "no key (YOUTUBE_API_KEY secret is empty or missing)"
         return []
+    status["state"] = f"key present ({len(key)} chars)"
     client = client or httpx.Client(timeout=20)
     videos = []
     for geo in COUNTRIES:
@@ -51,8 +54,14 @@ def fetch_youtube(client: httpx.Client | None = None, key: str | None = None) ->
         except httpx.HTTPStatusError as exc:
             # Don't log the URL: it contains the key.
             log.warning("youtube %s failed: HTTP %s %s", geo, exc.response.status_code, exc.response.text[:200])
+            try:
+                reason = exc.response.json()["error"]["errors"][0]["reason"]
+            except Exception:
+                reason = exc.response.text[:80]
+            status["errors"].append(f"{geo}: HTTP {exc.response.status_code} {reason}")
         except Exception as exc:
             log.warning("youtube %s failed: %s", geo, type(exc).__name__)
+            status["errors"].append(f"{geo}: {type(exc).__name__}")
     log.info("fetched %d youtube videos", len(videos))
     return videos
 
