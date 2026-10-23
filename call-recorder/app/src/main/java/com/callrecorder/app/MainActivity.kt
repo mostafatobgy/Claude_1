@@ -3,6 +3,7 @@ package com.callrecorder.app
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Build
@@ -18,6 +19,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
 import com.google.android.material.materialswitch.MaterialSwitch
+import java.io.File
 
 class MainActivity : AppCompatActivity() {
 
@@ -27,10 +29,13 @@ class MainActivity : AppCompatActivity() {
     private lateinit var recordFab: ExtendedFloatingActionButton
     private lateinit var autoSwitch: MaterialSwitch
     private var player: MediaPlayer? = null
+    private var playingFile: File? = null
 
     private val permissions = buildList {
         add(Manifest.permission.RECORD_AUDIO)
         add(Manifest.permission.READ_PHONE_STATE)
+        add(Manifest.permission.READ_CALL_LOG)
+        add(Manifest.permission.READ_CONTACTS)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
             add(Manifest.permission.POST_NOTIFICATIONS)
     }.toTypedArray()
@@ -42,6 +47,7 @@ class MainActivity : AppCompatActivity() {
             ) {
                 Toast.makeText(this, R.string.need_permissions, Toast.LENGTH_LONG).show()
             }
+            reload()
             refreshButtons()
         }
 
@@ -58,7 +64,6 @@ class MainActivity : AppCompatActivity() {
         list.layoutManager = LinearLayoutManager(this)
         list.adapter = adapter
 
-        autoSwitch.isChecked = Prefs.autoRecord(this)
         autoSwitch.setOnCheckedChangeListener { _, checked ->
             if (checked && !hasCorePermissions()) {
                 autoSwitch.isChecked = false
@@ -75,6 +80,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        autoSwitch.isChecked = Prefs.autoRecord(this)
         reload()
         refreshButtons()
     }
@@ -92,6 +98,9 @@ class MainActivity : AppCompatActivity() {
             .setCancelable(false)
             .setPositiveButton(R.string.consent_agree) { _, _ ->
                 Prefs.setConsentAccepted(this)
+                // The whole point of the app is to capture calls, so auto-record starts on.
+                Prefs.setAutoRecord(this, true)
+                autoSwitch.isChecked = true
                 requestPermissions()
             }
             .setNegativeButton(R.string.consent_exit) { _, _ -> finish() }
@@ -138,29 +147,75 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun reload() {
-        val items = Storage.list(this)
+        val unknown = getString(R.string.unknown_number)
+        val items = Storage.list(this).map { rec ->
+            val number = rec.number
+            val title = Contacts.nameFor(this, number) ?: number ?: unknown
+            RecordingItem(rec, title, "${rec.whenText}  ·  ${formatSize(rec.sizeBytes)}")
+        }
         adapter.submit(items)
         empty.visibility = if (items.isEmpty()) TextView.VISIBLE else TextView.GONE
     }
 
+    /** Tap to play; tap the same row again to stop. Falls back to an external player on error. */
     private fun play(r: Recording) {
+        if (playingFile == r.file) { // same row tapped again -> toggle off
+            stopPlayback()
+            return
+        }
         stopPlayback()
+
+        if (!r.file.exists() || r.file.length() == 0L) {
+            Toast.makeText(this, R.string.empty_recording, Toast.LENGTH_LONG).show()
+            return
+        }
+
         try {
             player = MediaPlayer().apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build()
+                )
                 setDataSource(r.file.absolutePath)
                 setOnCompletionListener { stopPlayback() }
+                setOnErrorListener { _, _, _ ->
+                    stopPlayback()
+                    openExternally(r) // let a full media player try the file
+                    true
+                }
                 prepare()
                 start()
             }
+            playingFile = r.file
             Toast.makeText(this, R.string.playing, Toast.LENGTH_SHORT).show()
+            refreshButtons()
         } catch (_: Exception) {
-            Toast.makeText(this, R.string.play_failed, Toast.LENGTH_SHORT).show()
+            stopPlayback()
+            openExternally(r)
         }
     }
 
     private fun stopPlayback() {
         player?.run { runCatching { if (isPlaying) stop(); release() } }
         player = null
+        playingFile = null
+    }
+
+    /** Open the file in whatever audio player the phone has, via a shareable content URI. */
+    private fun openExternally(r: Recording) {
+        try {
+            val uri = FileProvider.getUriForFile(this, "$packageName.files", r.file)
+            startActivity(
+                Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, "audio/mp4")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+            )
+        } catch (_: Exception) {
+            Toast.makeText(this, R.string.play_failed, Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun share(r: Recording) {
@@ -176,8 +231,9 @@ class MainActivity : AppCompatActivity() {
     private fun confirmDelete(r: Recording) {
         AlertDialog.Builder(this)
             .setTitle(R.string.delete_title)
-            .setMessage(r.title)
+            .setMessage(Contacts.nameFor(this, r.number) ?: r.number ?: getString(R.string.unknown_number))
             .setPositiveButton(R.string.delete) { _, _ ->
+                if (playingFile == r.file) stopPlayback()
                 r.file.delete()
                 reload()
             }
