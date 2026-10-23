@@ -35,12 +35,17 @@ GitHub Actions (كل 30 دقيقة)
 4. **Actions ← Update news ← Run workflow** لتشغيل أول تحديث.
 5. بعد دقيقتين تقريبًا يكون موقعك جاهزًا على: `https://mostafatobgy.github.io/Claude_1/`
 
+## يوتيوب (اختياري)
+
+لإظهار «الأكثر رواجًا على يوتيوب» في تبويب الترند: أنشئ مفتاحًا مجانيًا لـ YouTube Data API v3
+وأضفه في **Settings ← Secrets and variables ← Actions** باسم `YOUTUBE_API_KEY`.
+
 ## تثبيته على هاتف أندرويد
 
 **الطريقة الأسهل:** افتح رابط موقعك في Chrome ← القائمة ⋮ ← **«تثبيت التطبيق»** (أو «إضافة إلى الشاشة الرئيسية»).
 يظهر بأيقونة مثل أي تطبيق، ويعمل بملء الشاشة، ويعرض آخر أخبار محمّلة حتى بدون إنترنت.
 
-**اختياري — ملف APK:** في GitHub: **Actions ← Build Android APK ← Run workflow** واكتب رابط موقعك،
+**ملف APK:** رابط ثابت لأحدث نسخة: https://github.com/mostafatobgy/Claude_1/releases/download/app/akhbar.apk — أو في GitHub: **Actions ← Build Android APK ← Run workflow** واكتب رابط موقعك،
 ثم نزّل الملف من صفحة نتيجة التشغيل وثبّته على الهاتف (ستحتاج السماح بالتثبيت من مصادر غير معروفة).
 
 ## الترند

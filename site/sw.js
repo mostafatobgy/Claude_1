@@ -1,5 +1,5 @@
 // Network-first for everything (so updates show up), falling back to the last cached copy when offline.
-const CACHE = "akhbar-v4";
+const CACHE = "akhbar-v5";
 const SHELL = ["./", "index.html", "manifest.json", "icon.svg", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())));

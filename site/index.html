@@ -77,6 +77,9 @@ h2.sec.wiki { color: var(--chip-on); }
 .src { font-size: 12px; border: 1px solid var(--line); border-radius: 6px; padding: 0 6px; }
 .up { color: var(--urgent); font-weight: 600; }
 .note { font-size: 13.5px; color: var(--muted); margin: -4px 0 10px; }
+.badge.yt { color: #c4302b; background: var(--urgent-bg); }
+h2.sec.yt { color: #c4302b; }
+.thumb img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; margin-bottom: 8px; background: var(--line); }
 .rank { font: 700 15px "Noto Kufi Arabic", sans-serif; color: var(--ink); min-width: 1.4em; }
 .orig { display: block; font: 500 13px "Segoe UI", Tahoma, sans-serif; color: var(--muted); direction: ltr; text-align: right; }
 .tnews a { display: block; color: var(--chip-on); text-decoration: none; font-size: 14.5px; padding: 3px 0; }
@@ -109,6 +112,7 @@ h2.sec.wiki { color: var(--chip-on); }
     <button data-tregion="egypt" aria-pressed="false">مصر</button>
     <button data-tregion="region" aria-pressed="false">المنطقة</button>
     <button data-tregion="world" aria-pressed="false">العالم</button>
+    <button data-tregion="youtube" aria-pressed="false">يوتيوب</button>
     <button data-tregion="wiki" aria-pressed="false">ويكيبيديا</button>
   </div>
   <div id="list"></div>
@@ -190,14 +194,36 @@ function wikiCard(a, rank) {
   </article>`;
 }
 
+function ytCard(v, rank) {
+  const original = v.title_ar !== v.title ? `<span class="orig">${esc(v.title)}</span>` : "";
+  return `<article class="trend yt">
+    ${v.thumb ? `<a class="thumb" href="${esc(v.url)}" target="_blank" rel="noopener"><img src="${esc(v.thumb)}" alt="" loading="lazy"></a>` : ""}
+    <div class="meta">
+      <span class="rank">${rank}</span>
+      <span class="badge yt">▶ ${fmtTraffic(v.views)} مشاهدة</span>
+      <span>${v.countries.map(esc).join(" · ")}</span>
+      <span class="src">يوتيوب</span>
+    </div>
+    <h3>${esc(v.title_ar)} ${original}</h3>
+    <p class="why">${esc(v.channel)}</p>
+    <div class="tnews"><a href="${esc(v.url)}" target="_blank" rel="noopener">شاهد على يوتيوب ↗</a></div>
+  </article>`;
+}
+
 function renderTrends() {
   const list = document.getElementById("list");
-  const trends = (data.trends || []).filter(t => !view.tregion || t.region === view.tregion);
-  const wiki = !view.tregion || view.tregion === "wiki" ? (data.wiki?.articles || []) : [];
+  const tr = view.tregion, byRegion = x => !tr || x.region === tr;
+  const trends = ["youtube", "wiki"].includes(tr) ? [] : (data.trends || []).filter(byRegion);
+  const videos = tr === "wiki" ? [] : (data.youtube || []).filter(v => tr === "youtube" || byRegion(v));
+  const wiki = !tr || tr === "wiki" ? (data.wiki?.articles || []) : [];
   let html = "";
   for (const r of ["egypt", "region", "world"]) {
     const group = trends.filter(t => t.region === r);
     if (group.length) html += `<h2 class="sec hot">ترند ${REGION[r]}</h2>` + group.map((t, i) => trendCard(t, i + 1)).join("");
+  }
+  for (const r of ["egypt", "region", "world"]) {
+    const group = videos.filter(v => v.region === r);
+    if (group.length) html += `<h2 class="sec yt">الأكثر رواجًا على يوتيوب · ${REGION[r]}</h2>` + group.map((v, i) => ytCard(v, i + 1)).join("");
   }
   if (wiki.length) {
     html += `<h2 class="sec wiki">الأكثر صعودًا على ويكيبيديا العربية</h2>

@@ -14,9 +14,20 @@ android {
         applicationId = "com.akhbar.app"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        // Each GitHub build gets a higher number, so a new APK installs over the old one.
+        versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
+        versionName = "1.$versionCode"
         buildConfigField("String", "SERVER_URL", "\"$serverUrl\"")
+    }
+    // A fixed key (committed on purpose — it is Android's standard debug key setup, not a secret)
+    // so every build is signed the same way and updates install without uninstalling first.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
     buildFeatures { buildConfig = true }
     buildTypes {

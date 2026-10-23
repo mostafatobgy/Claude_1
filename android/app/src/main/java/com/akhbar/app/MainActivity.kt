@@ -9,6 +9,8 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
 /** Shows the news web app; article links open in the phone's browser. */
@@ -36,6 +38,13 @@ class MainActivity : AppCompatActivity() {
             }
         }
         swipe.addView(webView)
+        // Android 15 draws apps under the status/navigation bars; keep the page clear of them.
+        swipe.setBackgroundColor(0xFF0F3D5E.toInt())
+        ViewCompat.setOnApplyWindowInsetsListener(swipe) { v, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            insets
+        }
         swipe.setOnRefreshListener { webView.reload() }
         // Only allow pull-to-refresh when the page is scrolled to the top.
         swipe.setOnChildScrollUpCallback { _, _ -> webView.scrollY > 0 }

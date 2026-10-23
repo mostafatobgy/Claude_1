@@ -39,6 +39,7 @@ jobs:
       - run: python builder/build.py
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
       - uses: actions/upload-pages-artifact@v3
         with:

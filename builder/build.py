@@ -12,6 +12,7 @@ from rank import classify_and_score, group_stories, tier
 from translate import Translator
 from trends import fetch_trends, group_trends
 from wiki import fetch_wiki
+from youtube import fetch_youtube, group_videos
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("build")
@@ -82,10 +83,13 @@ def main():
     data = build(items, translator)
     data["trends"] = build_trends(fetch_trends(), translator)
     data["wiki"] = fetch_wiki()
+    videos = fetch_youtube()
+    data["youtube"] = group_videos(videos, translator.translate_many(
+        [v["title"] for v in videos if not is_arabic(v["title"])]))
     translator.save()
     # Shown as a note on the GitHub Actions run page.
     print(f"::notice::{len(data['stories'])} stories, {len(data['trends'])} trends, "
-          f"{len(data['wiki']['articles'])} wikipedia, "
+          f"{len(data['wiki']['articles'])} wikipedia, {len(data['youtube'])} youtube, "
           f"{data['held_back']} waiting for translation, "
           f"translations {translator.stats}")
     OUT.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
