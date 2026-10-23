@@ -55,9 +55,11 @@ def fetch_youtube(client: httpx.Client | None = None, key: str | None = None) ->
             # Don't log the URL: it contains the key.
             log.warning("youtube %s failed: HTTP %s %s", geo, exc.response.status_code, exc.response.text[:200])
             try:
-                reason = exc.response.json()["error"]["errors"][0]["reason"]
+                err = exc.response.json()["error"]
+                details = [d.get("reason", "") for d in err.get("details", []) if d.get("reason")]
+                reason = f"{err.get('status', '')} {details} {err.get('message', '')[:160]}"
             except Exception:
-                reason = exc.response.text[:80]
+                reason = exc.response.text[:160]
             status["errors"].append(f"{geo}: HTTP {exc.response.status_code} {reason}")
         except Exception as exc:
             log.warning("youtube %s failed: %s", geo, type(exc).__name__)
