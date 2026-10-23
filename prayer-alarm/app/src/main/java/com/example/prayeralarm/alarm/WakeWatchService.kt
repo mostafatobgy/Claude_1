@@ -14,7 +14,10 @@ import android.os.Looper
 import android.os.PowerManager
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
+import com.example.prayeralarm.LocaleHelper
 import com.example.prayeralarm.R
+import com.example.prayeralarm.data.AlarmGroup
+import com.example.prayeralarm.data.Occurrence
 import com.example.prayeralarm.data.Store
 import java.time.ZonedDateTime
 
@@ -32,20 +35,28 @@ class WakeWatchService : Service() {
         override fun onReceive(context: Context, intent: Intent) = onUnlocked()
     }
 
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleHelper.wrap(newBase))
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        running = true
         watchUntil = maxOf(watchUntil, intent?.getLongExtra(EXTRA_UNTIL, 0L) ?: 0L)
+        // The notification shows the nearest alarm, with "Turn off today" and tap-to-open.
+        val next = upcoming().firstOrNull()
         Notifications.ensureChannels(this)
         ServiceCompat.startForeground(
-            this, NOTIFICATION_ID, Notifications.watching(this, watchUntil),
+            this, NOTIFICATION_ID, Notifications.watching(this, next?.first, next?.second),
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED else 0,
         )
         val remaining = watchUntil - System.currentTimeMillis()
-        if (remaining <= 0) {
+        if (remaining <= 0 || next == null) {
             finish()
             return START_NOT_STICKY
         }
+        if (intent?.action == ACTION_REFRESH) return START_NOT_STICKY
         if (!registered) {
             ContextCompat.registerReceiver(
                 this, unlockReceiver, IntentFilter(Intent.ACTION_USER_PRESENT), ContextCompat.RECEIVER_NOT_EXPORTED,
@@ -63,16 +74,22 @@ class WakeWatchService : Service() {
         getSystemService(PowerManager::class.java).isInteractive &&
             !getSystemService(KeyguardManager::class.java).isKeyguardLocked
 
-    private fun onUnlocked() {
+    /** Groups whose first alarm of the session rings within the check window, nearest first. */
+    private fun upcoming(): List<Pair<AlarmGroup, Occurrence>> {
         val store = Store(this)
         val window = store.appSettings.wakeCheckMinutes.toLong()
         val now = ZonedDateTime.now()
         val ctx = store.scheduleContext()
-        store.groups().forEach { group ->
-            val next = group.nextOccurrence(now, ctx) ?: return@forEach
-            if (next.index == 0 && !next.time.isAfter(now.plusMinutes(window))) {
-                Notifications.showEarlyWake(this, group.id, group.label.ifBlank { getString(R.string.alarm) }, next)
-            }
+        return store.groups().mapNotNull { group ->
+            group.nextOccurrence(now, ctx)
+                ?.takeIf { it.index == 0 && !it.time.isAfter(now.plusMinutes(window)) }
+                ?.let { group to it }
+        }.sortedBy { it.second.time }
+    }
+
+    private fun onUnlocked() {
+        upcoming().forEach { (group, next) ->
+            Notifications.showEarlyWake(this, group.id, group.label.ifBlank { getString(R.string.alarm) }, next)
         }
         finish()
     }
@@ -84,11 +101,13 @@ class WakeWatchService : Service() {
             registered = false
         }
         watchUntil = 0L
+        running = false
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
     override fun onDestroy() {
+        running = false
         handler.removeCallbacks(timeout)
         if (registered) runCatching { unregisterReceiver(unlockReceiver) }
         super.onDestroy()
@@ -96,6 +115,8 @@ class WakeWatchService : Service() {
 
     companion object {
         private const val EXTRA_UNTIL = "until"
+        private const val ACTION_REFRESH = "com.example.prayeralarm.WATCH_REFRESH"
+        @Volatile private var running = false
         private const val NOTIFICATION_ID = 2
 
         fun start(context: Context, until: Long) {
@@ -105,6 +126,16 @@ class WakeWatchService : Service() {
                 )
             } catch (e: IllegalStateException) {
                 // Android refused a background start (e.g. exact-alarm permission revoked); the alarm still rings.
+            }
+        }
+
+        /** After an alarm was turned off or changed: update the notification, or stop if nothing is left. */
+        fun refresh(context: Context) {
+            if (!running) return
+            try {
+                context.startService(Intent(context, WakeWatchService::class.java).setAction(ACTION_REFRESH))
+            } catch (e: IllegalStateException) {
+                // Not allowed right now; the watch ends at the alarm time anyway.
             }
         }
     }

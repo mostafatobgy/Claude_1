@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Prayer Alarm</string>
+    <string name="app_name">Alarm</string>
     <string name="prayer_times">Prayer times</string>
     <string name="alarms">Alarms</string>
     <string name="alarm">Alarm</string>
@@ -126,8 +126,6 @@
     <string name="work_days_list">Work: %1$s</string>
     <string name="watch_channel">Waiting for you to wake up</string>
     <string name="early_wake_channel">Up before your alarm</string>
-    <string name="watching_title">Alarm at %1$s</string>
-    <string name="watching_text">I\'ll ask if you unlock the phone before it rings</string>
     <string name="early_wake_title">Up before your alarm?</string>
     <string name="early_wake_text">Turn off the %1$s alarm (%2$s) for today?</string>
     <string name="turn_off_today">Turn off today</string>
@@ -137,6 +135,9 @@
     <string name="background_fit">Picture display</string>
     <string name="fit_fill">Fill the screen</string>
     <string name="fit_whole">Show whole picture</string>
+    <string name="section_general">General</string>
+    <string name="language">Language</string>
+    <string name="language_system">Follow phone language</string>
     <plurals name="alarm_count">
         <item quantity="one">1 alarm</item>
         <item quantity="other">%d alarms</item>

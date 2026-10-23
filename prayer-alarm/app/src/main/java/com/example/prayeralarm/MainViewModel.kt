@@ -20,6 +20,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val appSettings: StateFlow<AppSettings> = _appSettings
     val groups: StateFlow<List<AlarmGroup>> = _groups
 
+    /** Application context in the app's chosen language, for alarm labels and notifications. */
+    private val context get() = LocaleHelper.wrap(getApplication<Application>())
+
     /** Reloads from storage, e.g. after a one-time alarm switched itself off while the app was closed. */
     fun refresh() {
         _settings.value = store.settings
@@ -31,14 +34,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         store.settings = transform(_settings.value)
         _settings.value = store.settings
         // Prayer-based alarm groups move with the prayer times too.
-        AlarmScheduler.rescheduleAll(getApplication())
+        AlarmScheduler.rescheduleAll(context)
     }
 
     fun updateAppSettings(transform: (AppSettings) -> AppSettings) {
-        store.appSettings = transform(_appSettings.value)
+        val old = _appSettings.value
+        store.appSettings = transform(old)
         _appSettings.value = store.appSettings
+        // Recreates the screens in the new language.
+        if (old.language != store.appSettings.language) LocaleHelper.apply(store.appSettings.language)
         // Work days and the reminder time change when groups ring.
-        AlarmScheduler.rescheduleAll(getApplication())
+        AlarmScheduler.rescheduleAll(context)
     }
 
     fun newGroupId() = store.nextId()
@@ -47,19 +53,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun saveGroup(group: AlarmGroup): Occurrence? {
         store.upsert(group)
         _groups.value = store.groups()
-        return AlarmScheduler.scheduleGroup(getApplication(), group, store = store)
+        return AlarmScheduler.scheduleGroup(context, group, store = store)
     }
 
     fun setEnabled(group: AlarmGroup, enabled: Boolean): Occurrence? =
         saveGroup(group.copy(enabled = enabled, skipUntil = 0L))
 
     fun skipNext(group: AlarmGroup) {
-        AlarmScheduler.skipNext(getApplication(), group)
+        AlarmScheduler.skipNext(context, group)
         _groups.value = store.groups()
     }
 
     fun deleteGroup(group: AlarmGroup) {
-        AlarmScheduler.cancelGroup(getApplication(), group.id)
+        AlarmScheduler.cancelGroup(context, group.id)
         store.delete(group.id)
         _groups.value = store.groups()
     }

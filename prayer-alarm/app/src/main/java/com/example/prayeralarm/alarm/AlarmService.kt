@@ -21,6 +21,7 @@ import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
+import com.example.prayeralarm.LocaleHelper
 import com.example.prayeralarm.R
 import com.example.prayeralarm.data.AppSettings
 import com.example.prayeralarm.data.Store
@@ -56,6 +57,10 @@ class AlarmService : Service() {
         }
     }
     private var rampIncrement = 1f
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleHelper.wrap(newBase))
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 

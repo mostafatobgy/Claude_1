@@ -25,8 +25,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material3.Icon
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -40,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -55,7 +57,8 @@ import java.time.format.FormatStyle
 import java.time.format.TextStyle
 import java.util.Locale
 
-val timeFormat: DateTimeFormatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
+// A getter, so a language change in Settings takes effect without restarting the app.
+val timeFormat: DateTimeFormatter get() = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
 
 /** Saturday-first in Arabic, matching the week in Egypt and most of the region; Monday-first otherwise. */
 fun weekOrder(): List<DayOfWeek> {
@@ -99,14 +102,14 @@ fun DayCircles(selected: Set<DayOfWeek>, onToggle: (DayOfWeek) -> Unit) {
                 Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
+                    .background(if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer)
                     .clickable { onToggle(day) },
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     day.getDisplayName(TextStyle.NARROW, Locale.getDefault()),
                     style = MaterialTheme.typography.labelLarge,
-                    color = if (on) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (on) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             }
         }
@@ -127,38 +130,67 @@ fun Stepper(text: String, onMinus: (() -> Unit)?, onPlus: (() -> Unit)?) {
 fun SectionTitle(text: String) {
     Text(
         text,
-        Modifier.padding(start = 16.dp, top = 20.dp, bottom = 4.dp),
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
+        Modifier.padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 8.dp),
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onBackground,
     )
 }
 
+/** Icon in a soft green circle, as in the style guide's settings rows. */
 @Composable
-fun SettingRow(title: String, value: String?, trailing: @Composable (() -> Unit)? = null, onClick: () -> Unit) {
+fun RowIcon(icon: ImageVector) {
+    Box(
+        Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
+        contentAlignment = Alignment.Center,
+    ) { Icon(icon, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary) }
+}
+
+@Composable
+fun SettingRow(
+    title: String,
+    value: String?,
+    icon: ImageVector? = null,
+    trailing: @Composable (() -> Unit)? = null,
+    onClick: () -> Unit,
+) {
     Row(
         Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (icon != null) {
+            RowIcon(icon)
+            Spacer(Modifier.width(14.dp))
+        }
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
-            if (value != null) Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            if (value != null) {
+                Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
-        if (trailing != null) {
-            Spacer(Modifier.width(12.dp))
-            trailing()
-        }
+        Spacer(Modifier.width(12.dp))
+        if (trailing != null) trailing()
+        else Icon(
+            Icons.AutoMirrored.Outlined.KeyboardArrowRight, null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
 @Composable
 fun WarningCard(text: String, onClick: () -> Unit) {
-    Card(
+    AppCard(
         Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+        color = MaterialTheme.colorScheme.tertiaryContainer,
     ) {
         Row(Modifier.padding(start = 16.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(text, Modifier.weight(1f).padding(vertical = 12.dp), style = MaterialTheme.typography.bodyMedium)
-            TextButton(onClick = onClick) { Text(stringResource(R.string.allow)) }
+            Text(
+                text, Modifier.weight(1f).padding(vertical = 12.dp),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onTertiaryContainer,
+            )
+            TextButton(onClick = onClick) {
+                Text(stringResource(R.string.allow), color = MaterialTheme.colorScheme.tertiary)
+            }
         }
     }
 }
@@ -200,7 +232,14 @@ private enum class SoundSource { DEFAULT, RINGTONE, FILE }
  * (e.g. an adhan recording). Calls [onPicked] with (uri, name), or (null, null) for the default.
  */
 @Composable
-fun SoundRow(title: String, name: String?, defaultName: String, uri: String?, onPicked: (String?, String?) -> Unit) {
+fun SoundRow(
+    title: String,
+    name: String?,
+    defaultName: String,
+    uri: String?,
+    icon: ImageVector? = null,
+    onPicked: (String?, String?) -> Unit,
+) {
     val context = LocalContext.current
     var choosing by remember { mutableStateOf(false) }
     val ringtoneLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -217,7 +256,7 @@ fun SoundRow(title: String, name: String?, defaultName: String, uri: String?, on
         onPicked(picked.toString(), context.displayName(picked))
     }
 
-    SettingRow(title, name ?: defaultName, onClick = { choosing = true })
+    SettingRow(title, name ?: defaultName, icon = icon, onClick = { choosing = true })
 
     if (choosing) ChoiceDialog(
         title, SoundSource.entries, null,

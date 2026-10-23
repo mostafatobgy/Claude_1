@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">منبّه الصلاة</string>
+    <string name="app_name">المنبّه</string>
     <string name="prayer_times">مواقيت الصلاة</string>
     <string name="alarms">المنبّهات</string>
     <string name="alarm">منبّه</string>
@@ -126,8 +126,6 @@
     <string name="work_days_list">العمل: %1$s</string>
     <string name="watch_channel">انتظار الاستيقاظ</string>
     <string name="early_wake_channel">استيقظت قبل المنبّه</string>
-    <string name="watching_title">منبّه الساعة %1$s</string>
-    <string name="watching_text">سأسألك إذا فتحت الهاتف قبل أن يرنّ</string>
     <string name="early_wake_title">استيقظت قبل المنبّه؟</string>
     <string name="early_wake_text">هل تريد إيقاف منبّه %1$s (%2$s) لليوم؟</string>
     <string name="turn_off_today">إيقافه اليوم</string>
@@ -137,6 +135,9 @@
     <string name="background_fit">عرض الصورة</string>
     <string name="fit_fill">ملء الشاشة</string>
     <string name="fit_whole">الصورة كاملة</string>
+    <string name="section_general">عام</string>
+    <string name="language">اللغة</string>
+    <string name="language_system">حسب لغة الهاتف</string>
     <plurals name="alarm_count">
         <item quantity="zero">لا منبّهات</item>
         <item quantity="one">منبّه واحد</item>

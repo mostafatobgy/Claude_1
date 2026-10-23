@@ -8,8 +8,9 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -33,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -45,12 +47,13 @@ import com.example.prayeralarm.R
 import com.example.prayeralarm.data.BackgroundFit
 import com.example.prayeralarm.data.Store
 import com.example.prayeralarm.ui.AppTheme
+import com.example.prayeralarm.ui.Brand
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
 /** Full-screen alarm shown over the lock screen while [AlarmService] is ringing. */
-class AlarmRingActivity : ComponentActivity() {
+class AlarmRingActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
@@ -130,9 +133,10 @@ private fun RingScreen(
     onDismiss: () -> Unit,
     onStopGroup: () -> Unit,
 ) {
-    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.primaryContainer) {
-        Box(Modifier.fillMaxSize()) {
-            val textColor = if (background != null) Color.White else MaterialTheme.colorScheme.onPrimaryContainer
+    Surface(Modifier.fillMaxSize(), color = Brand.PrimaryDark) {
+        // Brand gradient (dark green → green) when no picture is chosen; text is white either way.
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Brand.PrimaryDark, Brand.Primary)))) {
+            val textColor = Color.White
             if (background != null) {
                 if (fit == BackgroundFit.FIT) Box(Modifier.fillMaxSize().background(Color.Black))
                 Image(
@@ -168,22 +172,22 @@ private fun RingScreen(
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     OutlinedButton(
                         onClick = onSnooze,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = textColor),
+                        modifier = Modifier.weight(1f).height(54.dp),
+                        border = BorderStroke(2.dp, Color.White),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
                     ) { Text(stringResource(R.string.snooze_minutes, snoozeMinutes)) }
-                    Button(onClick = onDismiss, modifier = Modifier.weight(1f)) {
-                        Text(stringResource(R.string.dismiss))
-                    }
+                    Button(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f).height(54.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Brand.PrimaryDark),
+                    ) { Text(stringResource(R.string.dismiss)) }
                 }
                 if (alarm.remaining > 0) {
                     Spacer(Modifier.height(16.dp))
                     Button(
                         onClick = onStopGroup,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.tertiary,
-                            contentColor = MaterialTheme.colorScheme.onTertiary,
-                        ),
+                        modifier = Modifier.fillMaxWidth().height(54.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Brand.Accent, contentColor = Color.White),
                     ) { Text(LocalContext.current.resources.getQuantityString(R.plurals.stop_remaining, alarm.remaining, alarm.remaining)) }
                 }
             }

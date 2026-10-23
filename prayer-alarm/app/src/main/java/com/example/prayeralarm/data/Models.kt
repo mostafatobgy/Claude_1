@@ -75,6 +75,9 @@ data class ScheduleContext(val workDays: Set<DayOfWeek>, val prayers: PrayerSett
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
+/** App language, independent of the phone's language. */
+enum class AppLanguage(val tag: String?) { SYSTEM(null), ARABIC("ar"), ENGLISH("en") }
+
 /** How the alarm screen shows the background picture: fill the screen (cropping), or show all of it. */
 enum class BackgroundFit { FILL, FIT }
 
@@ -99,6 +102,7 @@ data class AppSettings(
     val backgroundUri: String? = null,
     val backgroundFit: BackgroundFit = BackgroundFit.FILL,
     val theme: ThemeMode = ThemeMode.SYSTEM,
+    val language: AppLanguage = AppLanguage.SYSTEM,
 )
 
 data class PrayerAlarm(val enabled: Boolean, val minutesBefore: Int = 0)

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.PrayerAlarm" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="colorPrimary">#21804B</item>
+        <item name="colorPrimaryDark">#07543F</item>
+        <item name="colorAccent">#00A995</item>
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
+</resources>

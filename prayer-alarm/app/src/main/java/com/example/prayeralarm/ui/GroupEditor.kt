@@ -15,8 +15,9 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -29,6 +30,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -71,13 +73,20 @@ fun GroupEditor(
     BackHandler(onBack = onClose)
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(if (isNew) R.string.new_alarm else R.string.edit_alarm)) },
                 navigationIcon = {
                     IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
                 },
-                actions = { TextButton(onClick = { onSave(draft.copy(enabled = true, skipUntil = 0L)) }) { Text(stringResource(R.string.save)) } },
+                actions = {
+                    Button(
+                        onClick = { onSave(draft.copy(enabled = true, skipUntil = 0L)) },
+                        modifier = Modifier.padding(end = 8.dp),
+                    ) { Text(stringResource(R.string.save)) }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
     ) { padding ->
@@ -90,11 +99,12 @@ fun GroupEditor(
                 label = { Text(stringResource(R.string.label)) },
                 placeholder = { Text(stringResource(R.string.label_hint)) },
                 singleLine = true,
+                shape = FieldShape,
                 modifier = Modifier.fillMaxWidth(),
             )
 
             // Start time: fixed, or relative to a prayer.
-            Card(Modifier.fillMaxWidth()) {
+            AppCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(stringResource(R.string.start_time), style = MaterialTheme.typography.titleSmall)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -144,7 +154,7 @@ fun GroupEditor(
             }
 
             // How many alarms, and how far apart.
-            Card(Modifier.fillMaxWidth()) {
+            AppCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(stringResource(R.string.number_of_alarms), style = MaterialTheme.typography.titleSmall)
                     Stepper(
@@ -174,7 +184,7 @@ fun GroupEditor(
             }
 
             // Repeat.
-            Card(Modifier.fillMaxWidth()) {
+            AppCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(vertical = 8.dp)) {
                     Text(
                         stringResource(R.string.repeat), Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -193,7 +203,7 @@ fun GroupEditor(
                                     Text(
                                         repeatText(draft.copy(repeat = r), appSettings),
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.outline,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
                             }
@@ -216,7 +226,7 @@ fun GroupEditor(
             }
 
             // Sound.
-            Card(Modifier.fillMaxWidth()) {
+            AppCard(Modifier.fillMaxWidth()) {
                 SoundRow(
                     title = stringResource(R.string.sound),
                     name = draft.soundName,
@@ -227,7 +237,11 @@ fun GroupEditor(
 
             if (!isNew) {
                 HorizontalDivider()
-                TextButton(onClick = onDelete) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }
+                Button(
+                    onClick = onDelete,
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary),
+                ) { Text(stringResource(R.string.delete)) }
             }
             Spacer(Modifier.height(32.dp))
         }

@@ -111,6 +111,7 @@ object AlarmScheduler {
         store.upsert(updated)
         scheduleGroup(context, updated, store = store)
         cancelNotifications(context, groupId)
+        WakeWatchService.refresh(context)
     }
 
     fun skipNext(context: Context, group: AlarmGroup) {

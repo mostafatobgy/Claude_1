@@ -1,6 +1,5 @@
 package com.example.prayeralarm.ui
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -89,7 +87,7 @@ private fun GroupCard(
             group.session(now.toLocalDate().plusDays(d), now.zone, ctx).takeIf { it.isNotEmpty() }
         }
     }
-    Card(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+    AppCard(Modifier.fillMaxWidth(), onClick = onClick) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -113,7 +111,7 @@ private fun GroupCard(
             Text(
                 repeatText(group, appSettings),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (group.enabled) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

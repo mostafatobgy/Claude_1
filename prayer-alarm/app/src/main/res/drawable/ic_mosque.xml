@@ -1,0 +1,10 @@
+<!-- Outline crescent and star (prayer times tab). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:strokeColor="#FF000000" android:strokeWidth="2" android:strokeLineJoin="round"
+        android:fillColor="#00000000"
+        android:pathData="M15,3.5A8.5,8.5 0,1 0,20.5 18A7,7 0,1 1,15 3.5z" />
+    <path android:fillColor="#FF000000"
+        android:pathData="M18,6l0.9,1.9 2.1,0.3 -1.5,1.4 0.4,2.1L18,10.7l-1.9,1 0.4,-2.1 -1.5,-1.4 2.1,-0.3z" />
+</vector>

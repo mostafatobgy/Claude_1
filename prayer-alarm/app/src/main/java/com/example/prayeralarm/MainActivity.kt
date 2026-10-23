@@ -1,8 +1,8 @@
 package com.example.prayeralarm
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
@@ -11,7 +11,7 @@ import com.example.prayeralarm.alarm.AlarmScheduler
 import com.example.prayeralarm.ui.AppTheme
 import com.example.prayeralarm.ui.MainScreen
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
     private val viewModel: MainViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {

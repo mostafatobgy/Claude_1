@@ -2,37 +2,48 @@ package com.example.prayeralarm.ui
 
 import android.content.Intent
 import android.provider.Settings
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.outlined.AccountBox
+import androidx.compose.material.icons.outlined.DateRange
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.KeyboardArrowUp
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Phone
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import com.example.prayeralarm.R
+import com.example.prayeralarm.data.AppLanguage
 import com.example.prayeralarm.data.AppSettings
 import com.example.prayeralarm.data.BackgroundFit
 import com.example.prayeralarm.data.ThemeMode
@@ -44,14 +55,23 @@ private val ringOptions = listOf(1, 3, 5, 10, 15)
 private val reminderOptions = listOf(0, 5, 10, 15, 30, 60)
 private val wakeCheckOptions = listOf(0, 30, 60, 90, 120)
 
-private enum class Picker { ASCENDING, SNOOZE, RING, REMINDER, WAKE_CHECK, THEME, BACKGROUND, FIT }
+private enum class Picker { ASCENDING, SNOOZE, RING, REMINDER, WAKE_CHECK, LANGUAGE, THEME, BACKGROUND, FIT }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** A titled group of settings rows on one card, rows separated by hairlines. */
 @Composable
-fun SettingsScreen(settings: AppSettings, onChange: ((AppSettings) -> AppSettings) -> Unit, onClose: () -> Unit) {
+private fun SettingsGroup(title: String, content: @Composable ColumnScope.() -> Unit) {
+    SectionTitle(title)
+    AppCard(Modifier.fillMaxWidth().padding(horizontal = 16.dp), content = content)
+}
+
+@Composable
+private fun RowDivider() = HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
+
+/** The Settings tab. */
+@Composable
+fun SettingsContent(settings: AppSettings, onChange: ((AppSettings) -> AppSettings) -> Unit) {
     val context = LocalContext.current
     var picker by remember { mutableStateOf<Picker?>(null) }
-    BackHandler(onBack = onClose)
 
     val imageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
@@ -59,82 +79,103 @@ fun SettingsScreen(settings: AppSettings, onChange: ((AppSettings) -> AppSetting
         onChange { it.copy(backgroundUri = uri.toString()) }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.settings)) },
-                navigationIcon = {
-                    IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
-                },
-            )
-        },
-    ) { padding ->
-        Column(Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState())) {
-            SectionTitle(stringResource(R.string.section_sound))
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        SettingsGroup(stringResource(R.string.section_general)) {
+            SettingRow(
+                stringResource(R.string.language), languageLabel(settings.language),
+                icon = ImageVector.vectorResource(R.drawable.ic_language),
+            ) { picker = Picker.LANGUAGE }
+            RowDivider()
+            SettingRow(stringResource(R.string.theme), stringResource(settings.theme.nameRes()), icon = Icons.Outlined.Star) {
+                picker = Picker.THEME
+            }
+        }
+
+        SettingsGroup(stringResource(R.string.section_sound)) {
             SoundRow(
                 stringResource(R.string.alarm_sound), settings.alarmSoundName,
-                stringResource(R.string.sound_phone_default), settings.alarmSoundUri,
+                stringResource(R.string.sound_phone_default), settings.alarmSoundUri, icon = Icons.Outlined.PlayArrow,
             ) { uri, name -> onChange { it.copy(alarmSoundUri = uri, alarmSoundName = name ?: uri?.let { context.getString(R.string.custom_sound) }) } }
+            RowDivider()
             SoundRow(
                 stringResource(R.string.adhan_sound), settings.prayerSoundName,
                 stringResource(R.string.sound_adhan_default), settings.prayerSoundUri,
+                icon = ImageVector.vectorResource(R.drawable.ic_mosque),
             ) { uri, name -> onChange { it.copy(prayerSoundUri = uri, prayerSoundName = name ?: uri?.let { context.getString(R.string.custom_sound) }) } }
+            RowDivider()
             SettingRow(
-                stringResource(R.string.vibrate), null,
+                stringResource(R.string.vibrate), null, icon = Icons.Outlined.Phone,
                 trailing = { Switch(checked = settings.vibrate, onCheckedChange = { v -> onChange { it.copy(vibrate = v) } }) },
                 onClick = { onChange { it.copy(vibrate = !it.vibrate) } },
             )
-            SettingRow(stringResource(R.string.ascending_volume), ascendingLabel(settings.ascendingSeconds)) { picker = Picker.ASCENDING }
+            RowDivider()
+            SettingRow(stringResource(R.string.ascending_volume), ascendingLabel(settings.ascendingSeconds), icon = Icons.Outlined.KeyboardArrowUp) {
+                picker = Picker.ASCENDING
+            }
+        }
 
-            HorizontalDivider(Modifier.padding(top = 8.dp))
-            SectionTitle(stringResource(R.string.section_ringing))
-            SettingRow(stringResource(R.string.snooze_length), stringResource(R.string.n_minutes, settings.snoozeMinutes)) { picker = Picker.SNOOZE }
-            SettingRow(stringResource(R.string.ring_duration), stringResource(R.string.n_minutes, settings.ringMinutes)) { picker = Picker.RING }
-            SettingRow(stringResource(R.string.upcoming_notification), reminderLabel(settings.reminderMinutes)) { picker = Picker.REMINDER }
-            SettingRow(stringResource(R.string.wake_check), wakeCheckLabel(settings.wakeCheckMinutes)) { picker = Picker.WAKE_CHECK }
+        SettingsGroup(stringResource(R.string.section_ringing)) {
+            SettingRow(stringResource(R.string.snooze_length), stringResource(R.string.n_minutes, settings.snoozeMinutes), icon = Icons.Outlined.Refresh) {
+                picker = Picker.SNOOZE
+            }
+            RowDivider()
+            SettingRow(stringResource(R.string.ring_duration), stringResource(R.string.n_minutes, settings.ringMinutes), icon = Icons.Outlined.Info) {
+                picker = Picker.RING
+            }
+            RowDivider()
+            SettingRow(stringResource(R.string.upcoming_notification), reminderLabel(settings.reminderMinutes), icon = Icons.Outlined.Notifications) {
+                picker = Picker.REMINDER
+            }
+            RowDivider()
+            SettingRow(stringResource(R.string.wake_check), wakeCheckLabel(settings.wakeCheckMinutes), icon = Icons.Outlined.Lock) {
+                picker = Picker.WAKE_CHECK
+            }
+        }
 
-            HorizontalDivider(Modifier.padding(top = 8.dp))
-            SectionTitle(stringResource(R.string.section_week))
-            Text(
-                stringResource(R.string.work_days_hint),
-                Modifier.padding(horizontal = 16.dp),
-                style = MaterialTheme.typography.bodySmall,
-            )
-            Column(Modifier.padding(16.dp)) {
+        SettingsGroup(stringResource(R.string.section_week)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    stringResource(R.string.work_days_hint),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 DayCircles(settings.workDays) { day ->
                     onChange { it.copy(workDays = if (day in it.workDays) it.workDays - day else it.workDays + day) }
                 }
+                Text(
+                    stringResource(R.string.work_days_list, dayList(settings.workDays).ifEmpty { "—" }) + "\n" +
+                        stringResource(R.string.off_days_list, dayList(DayOfWeek.entries.toSet() - settings.workDays).ifEmpty { "—" }),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
             }
-            Text(
-                stringResource(R.string.work_days_list, dayList(settings.workDays).ifEmpty { "—" }) + "\n" +
-                    stringResource(R.string.off_days_list, dayList(DayOfWeek.entries.toSet() - settings.workDays).ifEmpty { "—" }),
-                Modifier.padding(horizontal = 16.dp),
-                style = MaterialTheme.typography.bodyMedium,
-            )
+        }
 
-            HorizontalDivider(Modifier.padding(top = 16.dp))
-            SectionTitle(stringResource(R.string.section_appearance))
-            SettingRow(stringResource(R.string.theme), stringResource(settings.theme.nameRes())) { picker = Picker.THEME }
+        SettingsGroup(stringResource(R.string.section_appearance)) {
             SettingRow(
                 stringResource(R.string.alarm_background),
                 stringResource(if (settings.backgroundUri == null) R.string.background_default else R.string.background_picture),
+                icon = Icons.Outlined.AccountBox,
             ) { picker = Picker.BACKGROUND }
             if (settings.backgroundUri != null) {
-                SettingRow(stringResource(R.string.background_fit), stringResource(settings.backgroundFit.nameRes())) { picker = Picker.FIT }
+                RowDivider()
+                SettingRow(stringResource(R.string.background_fit), stringResource(settings.backgroundFit.nameRes()), icon = Icons.Outlined.DateRange) {
+                    picker = Picker.FIT
+                }
             }
+        }
 
-            HorizontalDivider(Modifier.padding(top = 8.dp))
-            SectionTitle(stringResource(R.string.section_reliability))
-            SettingRow(stringResource(R.string.battery_optimization), stringResource(R.string.battery_hint)) {
+        SettingsGroup(stringResource(R.string.section_reliability)) {
+            SettingRow(stringResource(R.string.battery_optimization), stringResource(R.string.battery_hint), icon = Icons.Outlined.Warning) {
                 runCatching { context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
             }
-            SettingRow(stringResource(R.string.notification_settings), null) {
+            RowDivider()
+            SettingRow(stringResource(R.string.notification_settings), null, icon = Icons.Outlined.Settings) {
                 context.startActivity(
                     Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
                 )
             }
-            Spacer(Modifier.height(32.dp))
         }
+        Spacer(Modifier.height(32.dp))
     }
 
     when (picker) {
@@ -162,6 +203,10 @@ fun SettingsScreen(settings: AppSettings, onChange: ((AppSettings) -> AppSetting
             stringResource(R.string.background_fit), BackgroundFit.entries, settings.backgroundFit,
             label = { stringResource(it.nameRes()) }, onDismiss = { picker = null },
         ) { v -> onChange { it.copy(backgroundFit = v) }; picker = null }
+        Picker.LANGUAGE -> ChoiceDialog(
+            stringResource(R.string.language), AppLanguage.entries, settings.language,
+            label = { languageLabel(it) }, onDismiss = { picker = null },
+        ) { v -> picker = null; onChange { it.copy(language = v) } }
         Picker.THEME -> ChoiceDialog(
             stringResource(R.string.theme), ThemeMode.entries, settings.theme,
             label = { stringResource(it.nameRes()) }, onDismiss = { picker = null },
@@ -196,4 +241,12 @@ private fun wakeCheckLabel(minutes: Int) =
 private fun BackgroundFit.nameRes(): Int = when (this) {
     BackgroundFit.FILL -> R.string.fit_fill
     BackgroundFit.FIT -> R.string.fit_whole
+}
+
+// Each language is written in itself, so it can be found whatever the current language is.
+@Composable
+private fun languageLabel(language: AppLanguage) = when (language) {
+    AppLanguage.SYSTEM -> stringResource(R.string.language_system)
+    AppLanguage.ARABIC -> "العربية"
+    AppLanguage.ENGLISH -> "English"
 }

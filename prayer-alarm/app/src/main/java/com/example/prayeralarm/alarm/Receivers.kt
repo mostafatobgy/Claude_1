@@ -3,6 +3,7 @@ package com.example.prayeralarm.alarm
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import com.example.prayeralarm.LocaleHelper
 import com.example.prayeralarm.data.Repeat
 import com.example.prayeralarm.data.Store
 import com.example.prayeralarm.prayer.Prayer
@@ -12,7 +13,8 @@ import java.time.ZonedDateTime
 
 /** Handles alarms firing, the heads-up reminder before them, and "skip" from that reminder. */
 class AlarmReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent) {
+    override fun onReceive(rawContext: Context, intent: Intent) {
+        val context = LocaleHelper.wrap(rawContext)
         val id = intent.getIntExtra(AlarmScheduler.EXTRA_ID, -1)
         val label = intent.getStringExtra(AlarmScheduler.EXTRA_LABEL).orEmpty()
         val trigger = intent.getLongExtra(AlarmScheduler.EXTRA_TRIGGER, System.currentTimeMillis())
@@ -66,7 +68,8 @@ class AlarmReceiver : BroadcastReceiver() {
 
 /** Alarms are cleared on reboot, and fixed clock times shift when the time or timezone changes. */
 class BootReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent) {
+    override fun onReceive(rawContext: Context, intent: Intent) {
+        val context = LocaleHelper.wrap(rawContext)
         when (intent.action) {
             Intent.ACTION_BOOT_COMPLETED,
             Intent.ACTION_MY_PACKAGE_REPLACED,

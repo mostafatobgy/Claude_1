@@ -59,6 +59,7 @@ class Store(context: Context) {
                 backgroundUri = prefs.getString("s_background", null),
                 backgroundFit = enumOr(prefs.getString("s_background_fit", null), d.backgroundFit),
                 theme = enumOr(prefs.getString("s_theme", null), d.theme),
+                language = enumOr(prefs.getString("s_language", null), d.language),
             )
         }
         set(v) {
@@ -77,6 +78,7 @@ class Store(context: Context) {
                 .putString("s_background", v.backgroundUri)
                 .putString("s_background_fit", v.backgroundFit.name)
                 .putString("s_theme", v.theme.name)
+                .putString("s_language", v.language.name)
                 .apply()
         }
 
