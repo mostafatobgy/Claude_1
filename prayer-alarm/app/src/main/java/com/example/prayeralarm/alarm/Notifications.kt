@@ -7,6 +7,8 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.SystemClock
+import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import com.example.prayeralarm.MainActivity
 import com.example.prayeralarm.R
@@ -133,27 +135,27 @@ object Notifications {
     }
 
     /**
-     * Before a prayer: "Asr at 3:25" counting down to it. From the prayer time: "Since the Asr adhan"
+     * Before a prayer: "Asr -29:50" counting down to the adhan. From the prayer time: "Asr +0:10"
      * counting up, removed after [minutes]. Android's chronometer keeps the time ticking by itself.
      */
     fun showPrayerStatus(context: Context, prayer: Prayer, prayerTime: Long, minutes: Int, elapsed: Boolean) {
         ensureChannels(context)
         val name = context.prayerName(prayer)
-        val clock = Instant.ofEpochMilli(prayerTime).atZone(ZoneId.systemDefault())
-            .format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
+        // Same instant on the chronometer's clock (time since boot).
+        val base = SystemClock.elapsedRealtime() + (prayerTime - System.currentTimeMillis())
+        // Keep "-29:50" together left-to-right inside Arabic text.
+        val format = "$name \u2066${if (elapsed) "+" else "-"}%s\u2069"
+        val view = RemoteViews(context.packageName, R.layout.notification_prayer_status).apply {
+            setChronometer(R.id.prayer_chronometer, base, format, true)
+            setChronometerCountDown(R.id.prayer_chronometer, !elapsed)
+        }
         val endsAt = if (elapsed) prayerTime + minutes * 60_000L else prayerTime + 60_000L
         val notification = NotificationCompat.Builder(context, PRAYER_STATUS_CHANNEL)
             .setSmallIcon(R.drawable.ic_mosque)
-            .setContentTitle(
-                context.getString(if (elapsed) R.string.prayer_elapsed_title else R.string.prayer_countdown_title, name)
-            )
-            .setContentText(
-                context.getString(if (elapsed) R.string.prayer_elapsed_text else R.string.prayer_countdown_text, clock)
-            )
-            .setWhen(prayerTime)
-            .setShowWhen(true)
-            .setUsesChronometer(true)
-            .setChronometerCountDown(!elapsed)
+            .setContentTitle(name)
+            .setCustomContentView(view)
+            .setStyle(NotificationCompat.DecoratedCustomViewStyle())
+            .setShowWhen(false)
             .setOnlyAlertOnce(true)
             .setSilent(true)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
