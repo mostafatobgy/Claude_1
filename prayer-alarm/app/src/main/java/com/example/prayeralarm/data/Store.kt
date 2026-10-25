@@ -18,6 +18,7 @@ class Store(context: Context) {
             return PrayerSettings(
                 latitude = prefs.getString("lat", null)?.toDoubleOrNull(),
                 longitude = prefs.getString("lng", null)?.toDoubleOrNull(),
+                cityName = prefs.getString("city", null),
                 method = enumOr(prefs.getString("method", null), defaults.method),
                 asrMethod = enumOr(prefs.getString("asr", null), defaults.asrMethod),
                 prayerAlarms = Prayer.entries.associateWith { p ->
@@ -32,6 +33,7 @@ class Store(context: Context) {
             prefs.edit().apply {
                 putString("lat", value.latitude?.toString())
                 putString("lng", value.longitude?.toString())
+                putString("city", value.cityName)
                 putString("method", value.method.name)
                 putString("asr", value.asrMethod.name)
                 value.prayerAlarms.forEach { (p, a) ->
@@ -61,6 +63,7 @@ class Store(context: Context) {
                 backgroundFit = enumOr(prefs.getString("s_background_fit", null), d.backgroundFit),
                 theme = enumOr(prefs.getString("s_theme", null), d.theme),
                 language = enumOr(prefs.getString("s_language", null), d.language),
+                sideButtons = enumOr(prefs.getString("s_side_buttons", null), d.sideButtons),
             )
         }
         set(v) {
@@ -81,6 +84,7 @@ class Store(context: Context) {
                 .putString("s_background_fit", v.backgroundFit.name)
                 .putString("s_theme", v.theme.name)
                 .putString("s_language", v.language.name)
+                .putString("s_side_buttons", v.sideButtons.name)
                 .apply()
         }
 

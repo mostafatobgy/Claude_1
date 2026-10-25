@@ -46,6 +46,7 @@ import com.example.prayeralarm.R
 import com.example.prayeralarm.data.AppLanguage
 import com.example.prayeralarm.data.AppSettings
 import com.example.prayeralarm.data.BackgroundFit
+import com.example.prayeralarm.data.SideButtonAction
 import com.example.prayeralarm.data.ThemeMode
 import java.time.DayOfWeek
 
@@ -56,7 +57,7 @@ private val reminderOptions = listOf(0, 5, 10, 15, 30, 60)
 private val wakeCheckOptions = listOf(0, 30, 60, 90, 120)
 private val countdownOptions = listOf(0, 15, 30, 45, 60)
 
-private enum class Picker { ASCENDING, SNOOZE, RING, REMINDER, WAKE_CHECK, PRAYER_COUNTDOWN, LANGUAGE, THEME, BACKGROUND, FIT }
+private enum class Picker { ASCENDING, SNOOZE, RING, REMINDER, WAKE_CHECK, SIDE_BUTTONS, PRAYER_COUNTDOWN, LANGUAGE, THEME, BACKGROUND, FIT }
 
 /** A titled group of settings rows on one card, rows separated by hairlines. */
 @Composable
@@ -130,6 +131,10 @@ fun SettingsContent(settings: AppSettings, onChange: ((AppSettings) -> AppSettin
             RowDivider()
             SettingRow(stringResource(R.string.wake_check), wakeCheckLabel(settings.wakeCheckMinutes), icon = Icons.Outlined.Lock) {
                 picker = Picker.WAKE_CHECK
+            }
+            RowDivider()
+            SettingRow(stringResource(R.string.side_buttons), stringResource(settings.sideButtons.nameRes()), icon = Icons.Outlined.Phone) {
+                picker = Picker.SIDE_BUTTONS
             }
         }
 
@@ -211,6 +216,10 @@ fun SettingsContent(settings: AppSettings, onChange: ((AppSettings) -> AppSettin
             stringResource(R.string.background_fit), BackgroundFit.entries, settings.backgroundFit,
             label = { stringResource(it.nameRes()) }, onDismiss = { picker = null },
         ) { v -> onChange { it.copy(backgroundFit = v) }; picker = null }
+        Picker.SIDE_BUTTONS -> ChoiceDialog(
+            stringResource(R.string.side_buttons), SideButtonAction.entries, settings.sideButtons,
+            label = { stringResource(it.nameRes()) }, onDismiss = { picker = null },
+        ) { v -> onChange { it.copy(sideButtons = v) }; picker = null }
         Picker.PRAYER_COUNTDOWN -> ChoiceDialog(
             stringResource(R.string.prayer_countdown_setting), countdownOptions, settings.prayerCountdownMinutes,
             label = { countdownLabel(it) }, onDismiss = { picker = null },
@@ -266,3 +275,9 @@ private fun languageLabel(language: AppLanguage) = when (language) {
 @Composable
 private fun countdownLabel(minutes: Int) =
     if (minutes == 0) stringResource(R.string.off) else stringResource(R.string.prayer_countdown_value, minutes)
+
+private fun SideButtonAction.nameRes(): Int = when (this) {
+    SideButtonAction.NONE -> R.string.side_buttons_none
+    SideButtonAction.SNOOZE -> R.string.side_buttons_snooze
+    SideButtonAction.DISMISS -> R.string.side_buttons_dismiss
+}

@@ -142,6 +142,11 @@
     <string name="prayer_countdown_setting">إشعار العدّ للصلاة</string>
     <string name="prayer_countdown_value">قبل الصلاة بـ %1$d دقيقة وبعد الأذان بـ %1$d دقيقة</string>
     <string name="prayer_countdown_channel">العدّ للصلاة</string>
+    <string name="location_set">تم تحديد الموقع</string>
+    <string name="side_buttons">أزرار جانب الهاتف أثناء الرنين</string>
+    <string name="side_buttons_none">لا شيء</string>
+    <string name="side_buttons_snooze">غفوة</string>
+    <string name="side_buttons_dismiss">إيقاف المنبّه</string>
     <plurals name="alarm_count">
         <item quantity="zero">لا منبّهات</item>
         <item quantity="one">منبّه واحد</item>

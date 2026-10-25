@@ -142,6 +142,11 @@
     <string name="prayer_countdown_setting">Prayer countdown notification</string>
     <string name="prayer_countdown_value">%1$d min before the prayer and %1$d min after the adhan</string>
     <string name="prayer_countdown_channel">Prayer countdown</string>
+    <string name="location_set">Location set</string>
+    <string name="side_buttons">Side buttons while ringing</string>
+    <string name="side_buttons_none">Do nothing</string>
+    <string name="side_buttons_snooze">Snooze</string>
+    <string name="side_buttons_dismiss">Dismiss the alarm</string>
     <plurals name="alarm_count">
         <item quantity="one">1 alarm</item>
         <item quantity="other">%d alarms</item>

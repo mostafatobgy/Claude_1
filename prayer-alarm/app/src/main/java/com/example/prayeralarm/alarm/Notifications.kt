@@ -15,7 +15,7 @@ import com.example.prayeralarm.R
 import com.example.prayeralarm.data.AlarmGroup
 import com.example.prayeralarm.data.Occurrence
 import com.example.prayeralarm.prayer.Prayer
-import com.example.prayeralarm.ui.prayerName
+import com.example.prayeralarm.data.Store
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -134,20 +134,31 @@ object Notifications {
             .build()
     }
 
+    /** Prayer names in Arabic whatever the app language, as the notification always shows them. */
+    private val arabicPrayerNames = mapOf(
+        Prayer.FAJR to "الفجر", Prayer.SUNRISE to "الشروق", Prayer.DHUHR to "الظهر",
+        Prayer.ASR to "العصر", Prayer.MAGHRIB to "المغرب", Prayer.ISHA to "العشاء",
+    )
+
     /**
-     * Before a prayer: "Asr -29:50" counting down to the adhan. From the prayer time: "Asr +0:10"
-     * counting up, removed after [minutes]. Android's chronometer keeps the time ticking by itself.
+     * One line: "العصر 20:35- | 3:25 م | القاهرة". The red time counts down to the adhan with "-",
+     * then up from it with "+", and the notification goes away after [minutes].
+     * Android's chronometer keeps the time ticking by itself.
      */
     fun showPrayerStatus(context: Context, prayer: Prayer, prayerTime: Long, minutes: Int, elapsed: Boolean) {
         ensureChannels(context)
-        val name = context.prayerName(prayer)
+        val name = arabicPrayerNames.getValue(prayer)
+        val clock = Instant.ofEpochMilli(prayerTime).atZone(ZoneId.systemDefault())
+            .format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
+        val city = Store(context).settings.cityName
+        val details = listOfNotNull(clock, city).joinToString(" | ", prefix = "| ")
         // Same instant on the chronometer's clock (time since boot).
         val base = SystemClock.elapsedRealtime() + (prayerTime - System.currentTimeMillis())
-        // Keep "-29:50" together left-to-right inside Arabic text.
-        val format = "$name \u2066${if (elapsed) "+" else "-"}%s\u2069"
         val view = RemoteViews(context.packageName, R.layout.notification_prayer_status).apply {
-            setChronometer(R.id.prayer_chronometer, base, format, true)
+            setChronometer(R.id.prayer_chronometer, base, if (elapsed) "%s+" else "%s-", true)
             setChronometerCountDown(R.id.prayer_chronometer, !elapsed)
+            setTextViewText(R.id.prayer_name, name)
+            setTextViewText(R.id.prayer_details, details)
         }
         val endsAt = if (elapsed) prayerTime + minutes * 60_000L else prayerTime + 60_000L
         val notification = NotificationCompat.Builder(context, PRAYER_STATUS_CHANNEL)

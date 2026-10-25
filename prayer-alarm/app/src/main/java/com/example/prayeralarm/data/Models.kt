@@ -75,6 +75,9 @@ data class ScheduleContext(val workDays: Set<DayOfWeek>, val prayers: PrayerSett
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
+/** What the phone's side buttons (volume, power) do while an alarm rings. */
+enum class SideButtonAction { NONE, SNOOZE, DISMISS }
+
 /** App language, independent of the phone's language. */
 enum class AppLanguage(val tag: String?) { SYSTEM(null), ARABIC("ar"), ENGLISH("en") }
 
@@ -105,6 +108,7 @@ data class AppSettings(
     val backgroundFit: BackgroundFit = BackgroundFit.FILL,
     val theme: ThemeMode = ThemeMode.SYSTEM,
     val language: AppLanguage = AppLanguage.SYSTEM,
+    val sideButtons: SideButtonAction = SideButtonAction.SNOOZE,
 )
 
 data class PrayerAlarm(val enabled: Boolean, val minutesBefore: Int = 0)
@@ -112,6 +116,8 @@ data class PrayerAlarm(val enabled: Boolean, val minutesBefore: Int = 0)
 data class PrayerSettings(
     val latitude: Double? = null,
     val longitude: Double? = null,
+    /** City name for the location, in Arabic (looked up from the coordinates); null if unknown. */
+    val cityName: String? = null,
     val method: CalculationMethod = CalculationMethod.EGYPT,
     val asrMethod: AsrMethod = AsrMethod.STANDARD,
     val prayerAlarms: Map<Prayer, PrayerAlarm> = Prayer.entries.associateWith { PrayerAlarm(it != Prayer.SUNRISE) },

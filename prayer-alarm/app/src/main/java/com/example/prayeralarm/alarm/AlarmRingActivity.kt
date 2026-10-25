@@ -1,5 +1,9 @@
 package com.example.prayeralarm.alarm
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
@@ -7,6 +11,7 @@ import android.media.ExifInterface
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
@@ -45,7 +50,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.prayeralarm.R
 import com.example.prayeralarm.data.BackgroundFit
+import com.example.prayeralarm.data.SideButtonAction
 import com.example.prayeralarm.data.Store
+import androidx.core.content.ContextCompat
 import com.example.prayeralarm.ui.AppTheme
 import com.example.prayeralarm.ui.Brand
 import java.time.LocalTime
@@ -54,6 +61,15 @@ import java.time.format.FormatStyle
 
 /** Full-screen alarm shown over the lock screen while [AlarmService] is ringing. */
 class AlarmRingActivity : AppCompatActivity() {
+    private var sideButtons = SideButtonAction.NONE
+    private var receiverRegistered = false
+    private var handledSideButton = false
+
+    // The power button turns the screen off; the screen stays on otherwise while this is shown.
+    private val screenOffReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) = onSideButton()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
@@ -66,6 +82,13 @@ class AlarmRingActivity : AppCompatActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         val settings = Store(this).appSettings
+        sideButtons = settings.sideButtons
+        if (sideButtons != SideButtonAction.NONE) {
+            ContextCompat.registerReceiver(
+                this, screenOffReceiver, IntentFilter(Intent.ACTION_SCREEN_OFF), ContextCompat.RECEIVER_NOT_EXPORTED,
+            )
+            receiverRegistered = true
+        }
         setContent {
             val alarm by AlarmService.ringing.collectAsStateWithLifecycle()
             // Close when the alarm is stopped from anywhere, e.g. the notification or the timeout.
@@ -90,6 +113,33 @@ class AlarmRingActivity : AppCompatActivity() {
     private fun send(action: String) {
         AlarmService.actionIntent(this, action).send()
         finish()
+    }
+
+    /** Volume up/down or power pressed while ringing: snooze or dismiss, as chosen in Settings. */
+    private fun onSideButton() {
+        if (sideButtons == SideButtonAction.NONE || handledSideButton || AlarmService.ringing.value == null) return
+        handledSideButton = true
+        send(if (sideButtons == SideButtonAction.SNOOZE) AlarmService.ACTION_SNOOZE else AlarmService.ACTION_DISMISS)
+    }
+
+    private fun isSideKey(keyCode: Int) = keyCode == KeyEvent.KEYCODE_VOLUME_UP ||
+        keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_CAMERA
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (sideButtons != SideButtonAction.NONE && isSideKey(keyCode)) {
+            if (event.repeatCount == 0) onSideButton()
+            return true
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
+    // Swallow the key-up too, so the volume doesn't change.
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean =
+        if (sideButtons != SideButtonAction.NONE && isSideKey(keyCode)) true else super.onKeyUp(keyCode, event)
+
+    override fun onDestroy() {
+        if (receiverRegistered) runCatching { unregisterReceiver(screenOffReceiver) }
+        super.onDestroy()
     }
 
     /**

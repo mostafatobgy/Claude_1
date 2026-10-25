@@ -250,7 +250,7 @@ private fun PrayerTab(settings: PrayerSettings, vm: MainViewModel) {
         if (result.values.any { it }) {
             Toast.makeText(context, R.string.locating, Toast.LENGTH_SHORT).show()
             fetchLocation(context) { loc ->
-                if (loc != null) vm.updateSettings { it.copy(latitude = loc.latitude, longitude = loc.longitude) }
+                if (loc != null) vm.setLocation(loc.latitude, loc.longitude)
                 else Toast.makeText(context, R.string.location_failed, Toast.LENGTH_LONG).show()
             }
         } else {
@@ -265,12 +265,20 @@ private fun PrayerTab(settings: PrayerSettings, vm: MainViewModel) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         RowIcon(Icons.Outlined.LocationOn)
                         Spacer(Modifier.width(8.dp))
-                        Text(
-                            if (settings.latitude != null && settings.longitude != null)
-                                String.format(Locale.US, "%.4f, %.4f", settings.latitude, settings.longitude)
-                            else stringResource(R.string.no_location),
-                            style = MaterialTheme.typography.titleMedium,
-                        )
+                        Column {
+                            Text(
+                                settings.cityName ?: if (settings.hasLocation) stringResource(R.string.location_set)
+                                else stringResource(R.string.no_location),
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                            if (settings.latitude != null && settings.longitude != null) {
+                                Text(
+                                    String.format(Locale.US, "%.4f, %.4f", settings.latitude, settings.longitude),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
                     }
                     Spacer(Modifier.padding(4.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -324,7 +332,7 @@ private fun PrayerTab(settings: PrayerSettings, vm: MainViewModel) {
     }
 
     if (showManual) ManualLocationDialog(settings, onDismiss = { showManual = false }) { lat, lng ->
-        vm.updateSettings { it.copy(latitude = lat, longitude = lng) }
+        vm.setLocation(lat, lng)
         showManual = false
     }
     if (showMethod) ChoiceDialog(

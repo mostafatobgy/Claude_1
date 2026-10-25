@@ -20,6 +20,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val appSettings: StateFlow<AppSettings> = _appSettings
     val groups: StateFlow<List<AlarmGroup>> = _groups
 
+    init {
+        // Locations saved before city names existed: look the city up once.
+        val s = store.settings
+        if (s.latitude != null && s.longitude != null && s.cityName == null) setLocation(s.latitude, s.longitude)
+    }
+
     /** Application context in the app's chosen language, for alarm labels and notifications. */
     private val context get() = LocaleHelper.wrap(getApplication<Application>())
 
@@ -35,6 +41,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _settings.value = store.settings
         // Prayer-based alarm groups move with the prayer times too.
         AlarmScheduler.rescheduleAll(context)
+    }
+
+    /** Saves a new location, then looks up its city name for the prayer notification. */
+    fun setLocation(latitude: Double, longitude: Double) {
+        updateSettings { it.copy(latitude = latitude, longitude = longitude, cityName = null) }
+        CityLookup.find(getApplication<Application>(), latitude, longitude) { city ->
+            val s = _settings.value
+            if (city != null && s.latitude == latitude && s.longitude == longitude) {
+                store.settings = s.copy(cityName = city)
+                _settings.value = store.settings
+            }
+        }
     }
 
     fun updateAppSettings(transform: (AppSettings) -> AppSettings) {
