@@ -25,6 +25,19 @@ class AlarmReceiver : BroadcastReceiver() {
             AlarmScheduler.ACTION_SKIP -> AlarmScheduler.skipSession(context, id, sessionEnd)
             AlarmScheduler.ACTION_KEEP -> AlarmScheduler.cancelNotifications(context, id)
             AlarmScheduler.ACTION_WATCH -> WakeWatchService.start(context, trigger)
+            AlarmScheduler.ACTION_PRAYER_COUNTDOWN, AlarmScheduler.ACTION_PRAYER_ELAPSED -> {
+                val prayer = Prayer.entries.getOrNull(id) ?: return
+                val store = Store(context)
+                val minutes = store.appSettings.prayerCountdownMinutes
+                if (minutes <= 0) return
+                val elapsed = intent.action == AlarmScheduler.ACTION_PRAYER_ELAPSED
+                Notifications.showPrayerStatus(context, prayer, trigger, minutes, elapsed)
+                // After the prayer time, arm the next day's countdown for this prayer.
+                if (elapsed) {
+                    val from = ZonedDateTime.ofInstant(Instant.ofEpochMilli(trigger).plusSeconds(1), ZoneId.systemDefault())
+                    AlarmScheduler.schedulePrayerCountdown(context, store.settings, prayer, minutes, from)
+                }
+            }
         }
     }
 

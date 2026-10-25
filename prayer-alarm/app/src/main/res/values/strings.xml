@@ -138,6 +138,14 @@
     <string name="section_general">عام</string>
     <string name="language">اللغة</string>
     <string name="language_system">حسب لغة الهاتف</string>
+    <string name="section_prayer">الصلاة</string>
+    <string name="prayer_countdown_setting">إشعار العدّ للصلاة</string>
+    <string name="prayer_countdown_value">قبل الصلاة بـ %1$d دقيقة وبعد الأذان بـ %1$d دقيقة</string>
+    <string name="prayer_countdown_channel">العدّ للصلاة</string>
+    <string name="prayer_countdown_title">الصلاة القادمة: %1$s</string>
+    <string name="prayer_countdown_text">الأذان الساعة %1$s — العدّ التنازلي</string>
+    <string name="prayer_elapsed_title">مضى على أذان %1$s</string>
+    <string name="prayer_elapsed_text">كان الأذان الساعة %1$s</string>
     <plurals name="alarm_count">
         <item quantity="zero">لا منبّهات</item>
         <item quantity="one">منبّه واحد</item>

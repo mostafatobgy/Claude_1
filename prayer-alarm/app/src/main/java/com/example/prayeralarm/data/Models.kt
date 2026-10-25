@@ -95,6 +95,8 @@ data class AppSettings(
     val reminderMinutes: Int = 5,
     /** If the phone is unlocked within this many minutes before an alarm, ask whether to turn it off; 0 = off. */
     val wakeCheckMinutes: Int = 60,
+    /** Countdown notification this many minutes before each prayer, then time since the adhan for as long; 0 = off. */
+    val prayerCountdownMinutes: Int = 30,
     // Egypt and most of the region: Sunday to Thursday.
     val workDays: Set<DayOfWeek> = setOf(
         DayOfWeek.SUNDAY, DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY,
@@ -121,6 +123,16 @@ data class PrayerSettings(
         else PrayerTimesCalculator.calculate(date, latitude, longitude, zone, method, asrMethod)
 
     fun alarmFor(prayer: Prayer) = prayerAlarms[prayer] ?: PrayerAlarm(false)
+
+    /** The first time [prayer] falls strictly after [from], or null without a location. */
+    fun nextPrayerTime(prayer: Prayer, from: ZonedDateTime): ZonedDateTime? {
+        if (!hasLocation) return null
+        for (i in 0L..7L) {
+            val time = timesFor(from.toLocalDate().plusDays(i), from.zone)[prayer] ?: continue
+            if (time.isAfter(from)) return time
+        }
+        return null
+    }
 
     /** Next time the alarm for [prayer] should ring after [from], or null if it is off or there is no location. */
     fun nextPrayerTrigger(prayer: Prayer, from: ZonedDateTime): ZonedDateTime? {

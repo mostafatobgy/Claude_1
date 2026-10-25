@@ -23,6 +23,8 @@ object AlarmScheduler {
     const val ACTION_SKIP = "com.example.prayeralarm.SKIP"
     const val ACTION_KEEP = "com.example.prayeralarm.KEEP"
     const val ACTION_WATCH = "com.example.prayeralarm.WATCH"
+    const val ACTION_PRAYER_COUNTDOWN = "com.example.prayeralarm.PRAYER_COUNTDOWN"
+    const val ACTION_PRAYER_ELAPSED = "com.example.prayeralarm.PRAYER_ELAPSED"
 
     const val EXTRA_KIND = "kind"
     const val EXTRA_ID = "id"
@@ -42,6 +44,12 @@ object AlarmScheduler {
     private const val REMINDER_REQUEST_BASE = 300_000
     private const val WATCH_REQUEST_BASE = 400_000
     private const val EARLY_WAKE_NOTIFICATION_BASE = 500_000
+    private const val COUNTDOWN_REQUEST_BASE = 700_000
+    private const val ELAPSED_REQUEST_BASE = 710_000
+    const val PRAYER_STATUS_NOTIFICATION_ID = 720_000
+
+    /** Prayers that get the countdown notification (sunrise is not a prayer). */
+    val countdownPrayers = Prayer.entries - Prayer.SUNRISE
 
     fun canScheduleExact(context: Context): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
@@ -56,6 +64,36 @@ object AlarmScheduler {
 
     fun reschedulePrayers(context: Context, settings: PrayerSettings = Store(context).settings) {
         Prayer.entries.forEach { schedulePrayer(context, settings, it) }
+        val minutes = Store(context).appSettings.prayerCountdownMinutes
+        countdownPrayers.forEach { schedulePrayerCountdown(context, settings, it, minutes) }
+        if (minutes <= 0 || !settings.hasLocation) {
+            context.getSystemService(NotificationManager::class.java).cancel(PRAYER_STATUS_NOTIFICATION_ID)
+        }
+    }
+
+    /**
+     * Arms the "Asr in 29:59" notification [minutes] before the prayer and the "since Asr" one at
+     * the prayer time. If the countdown window has already started, only the prayer-time part is armed.
+     */
+    fun schedulePrayerCountdown(
+        context: Context,
+        settings: PrayerSettings,
+        prayer: Prayer,
+        minutes: Int,
+        from: ZonedDateTime = ZonedDateTime.now(),
+    ) {
+        cancel(context, ACTION_PRAYER_COUNTDOWN, COUNTDOWN_REQUEST_BASE + prayer.ordinal)
+        cancel(context, ACTION_PRAYER_ELAPSED, ELAPSED_REQUEST_BASE + prayer.ordinal)
+        if (minutes <= 0) return
+        val time = settings.nextPrayerTime(prayer, from) ?: return
+        fun intent(action: String) = receiverIntent(context, action)
+            .putExtra(EXTRA_ID, prayer.ordinal)
+            .putExtra(EXTRA_TRIGGER, time.toInstant().toEpochMilli())
+        val startAt = time.minusMinutes(minutes.toLong())
+        if (startAt.isAfter(ZonedDateTime.now())) {
+            setReminder(context, COUNTDOWN_REQUEST_BASE + prayer.ordinal, startAt, intent(ACTION_PRAYER_COUNTDOWN))
+        }
+        setReminder(context, ELAPSED_REQUEST_BASE + prayer.ordinal, time, intent(ACTION_PRAYER_ELAPSED))
     }
 
     /** Arms the group's next alarm (and its heads-up reminder); returns it, or null if nothing is due. */

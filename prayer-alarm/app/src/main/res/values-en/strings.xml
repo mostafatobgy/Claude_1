@@ -138,6 +138,14 @@
     <string name="section_general">General</string>
     <string name="language">Language</string>
     <string name="language_system">Follow phone language</string>
+    <string name="section_prayer">Prayer</string>
+    <string name="prayer_countdown_setting">Prayer countdown notification</string>
+    <string name="prayer_countdown_value">%1$d min before the prayer and %1$d min after the adhan</string>
+    <string name="prayer_countdown_channel">Prayer countdown</string>
+    <string name="prayer_countdown_title">Next prayer: %1$s</string>
+    <string name="prayer_countdown_text">Adhan at %1$s — counting down</string>
+    <string name="prayer_elapsed_title">Time since the %1$s adhan</string>
+    <string name="prayer_elapsed_text">The adhan was at %1$s</string>
     <plurals name="alarm_count">
         <item quantity="one">1 alarm</item>
         <item quantity="other">%d alarms</item>

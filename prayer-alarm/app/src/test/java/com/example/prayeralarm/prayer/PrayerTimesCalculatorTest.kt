@@ -69,4 +69,20 @@ class PrayerTimesCalculatorTest {
         assertEquals(fajr.minusMinutes(10), next)
         assertEquals(null, settings.nextPrayerTrigger(Prayer.DHUHR, from))
     }
+
+    @Test
+    fun nextPrayerTimeIgnoresAlarmSwitchAndRollsOver() {
+        val zone = ZoneId.of("Africa/Cairo")
+        // Alarms all off: the countdown notification still needs the prayer times.
+        val settings = PrayerSettings(
+            latitude = 30.0444, longitude = 31.2357,
+            prayerAlarms = Prayer.entries.associateWith { PrayerAlarm(false) },
+        )
+        val today = LocalDate.of(2025, 1, 1)
+        val asr = settings.timesFor(today, zone)[Prayer.ASR]!!
+        assertEquals(asr, settings.nextPrayerTime(Prayer.ASR, asr.minusMinutes(30)))
+        // Exactly at (or after) the prayer time, the next one is tomorrow's.
+        assertEquals(today.plusDays(1), settings.nextPrayerTime(Prayer.ASR, asr)!!.toLocalDate())
+        assertEquals(null, PrayerSettings().nextPrayerTime(Prayer.ASR, asr))
+    }
 }

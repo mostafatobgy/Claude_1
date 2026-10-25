@@ -12,6 +12,8 @@ import com.example.prayeralarm.MainActivity
 import com.example.prayeralarm.R
 import com.example.prayeralarm.data.AlarmGroup
 import com.example.prayeralarm.data.Occurrence
+import com.example.prayeralarm.prayer.Prayer
+import com.example.prayeralarm.ui.prayerName
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -22,6 +24,7 @@ object Notifications {
     private const val UPCOMING_CHANNEL = "upcoming"
     private const val WATCH_CHANNEL = "watch_v2"
     private const val EARLY_WAKE_CHANNEL = "early_wake"
+    private const val PRAYER_STATUS_CHANNEL = "prayer_countdown"
 
     fun ensureChannels(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java)
@@ -42,6 +45,10 @@ object Notifications {
         nm.deleteNotificationChannel("watch")
         nm.createNotificationChannel(
             NotificationChannel(WATCH_CHANNEL, context.getString(R.string.watch_channel), NotificationManager.IMPORTANCE_LOW)
+        )
+        // Silent: a countdown that updates by itself shouldn't make noise.
+        nm.createNotificationChannel(
+            NotificationChannel(PRAYER_STATUS_CHANNEL, context.getString(R.string.prayer_countdown_channel), NotificationManager.IMPORTANCE_LOW)
         )
         nm.createNotificationChannel(
             NotificationChannel(EARLY_WAKE_CHANNEL, context.getString(R.string.early_wake_channel), NotificationManager.IMPORTANCE_HIGH)
@@ -123,6 +130,42 @@ object Notifications {
                 skipIntent(context, AlarmScheduler.ACTION_SKIP, group.id, next.sessionEnd.toInstant().toEpochMilli()),
             )
             .build()
+    }
+
+    /**
+     * Before a prayer: "Asr at 3:25" counting down to it. From the prayer time: "Since the Asr adhan"
+     * counting up, removed after [minutes]. Android's chronometer keeps the time ticking by itself.
+     */
+    fun showPrayerStatus(context: Context, prayer: Prayer, prayerTime: Long, minutes: Int, elapsed: Boolean) {
+        ensureChannels(context)
+        val name = context.prayerName(prayer)
+        val clock = Instant.ofEpochMilli(prayerTime).atZone(ZoneId.systemDefault())
+            .format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
+        val endsAt = if (elapsed) prayerTime + minutes * 60_000L else prayerTime + 60_000L
+        val notification = NotificationCompat.Builder(context, PRAYER_STATUS_CHANNEL)
+            .setSmallIcon(R.drawable.ic_mosque)
+            .setContentTitle(
+                context.getString(if (elapsed) R.string.prayer_elapsed_title else R.string.prayer_countdown_title, name)
+            )
+            .setContentText(
+                context.getString(if (elapsed) R.string.prayer_elapsed_text else R.string.prayer_countdown_text, clock)
+            )
+            .setWhen(prayerTime)
+            .setShowWhen(true)
+            .setUsesChronometer(true)
+            .setChronometerCountDown(!elapsed)
+            .setOnlyAlertOnce(true)
+            .setSilent(true)
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .setContentIntent(openApp(context))
+            .setTimeoutAfter((endsAt - System.currentTimeMillis()).coerceAtLeast(1_000))
+            .build()
+        try {
+            context.getSystemService(NotificationManager::class.java)
+                .notify(AlarmScheduler.PRAYER_STATUS_NOTIFICATION_ID, notification)
+        } catch (e: SecurityException) {
+            // Notification permission not granted.
+        }
     }
 
     /** "You're up before your alarm. Turn off the 6:00 alarm for today?" with Turn off / Keep. */

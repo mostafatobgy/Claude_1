@@ -54,8 +54,9 @@ private val snoozeOptions = listOf(5, 10, 15, 20, 30)
 private val ringOptions = listOf(1, 3, 5, 10, 15)
 private val reminderOptions = listOf(0, 5, 10, 15, 30, 60)
 private val wakeCheckOptions = listOf(0, 30, 60, 90, 120)
+private val countdownOptions = listOf(0, 15, 30, 45, 60)
 
-private enum class Picker { ASCENDING, SNOOZE, RING, REMINDER, WAKE_CHECK, LANGUAGE, THEME, BACKGROUND, FIT }
+private enum class Picker { ASCENDING, SNOOZE, RING, REMINDER, WAKE_CHECK, PRAYER_COUNTDOWN, LANGUAGE, THEME, BACKGROUND, FIT }
 
 /** A titled group of settings rows on one card, rows separated by hairlines. */
 @Composable
@@ -132,6 +133,13 @@ fun SettingsContent(settings: AppSettings, onChange: ((AppSettings) -> AppSettin
             }
         }
 
+        SettingsGroup(stringResource(R.string.section_prayer)) {
+            SettingRow(
+                stringResource(R.string.prayer_countdown_setting), countdownLabel(settings.prayerCountdownMinutes),
+                icon = ImageVector.vectorResource(R.drawable.ic_mosque),
+            ) { picker = Picker.PRAYER_COUNTDOWN }
+        }
+
         SettingsGroup(stringResource(R.string.section_week)) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
@@ -203,6 +211,10 @@ fun SettingsContent(settings: AppSettings, onChange: ((AppSettings) -> AppSettin
             stringResource(R.string.background_fit), BackgroundFit.entries, settings.backgroundFit,
             label = { stringResource(it.nameRes()) }, onDismiss = { picker = null },
         ) { v -> onChange { it.copy(backgroundFit = v) }; picker = null }
+        Picker.PRAYER_COUNTDOWN -> ChoiceDialog(
+            stringResource(R.string.prayer_countdown_setting), countdownOptions, settings.prayerCountdownMinutes,
+            label = { countdownLabel(it) }, onDismiss = { picker = null },
+        ) { v -> onChange { it.copy(prayerCountdownMinutes = v) }; picker = null }
         Picker.LANGUAGE -> ChoiceDialog(
             stringResource(R.string.language), AppLanguage.entries, settings.language,
             label = { languageLabel(it) }, onDismiss = { picker = null },
@@ -250,3 +262,7 @@ private fun languageLabel(language: AppLanguage) = when (language) {
     AppLanguage.ARABIC -> "العربية"
     AppLanguage.ENGLISH -> "English"
 }
+
+@Composable
+private fun countdownLabel(minutes: Int) =
+    if (minutes == 0) stringResource(R.string.off) else stringResource(R.string.prayer_countdown_value, minutes)
