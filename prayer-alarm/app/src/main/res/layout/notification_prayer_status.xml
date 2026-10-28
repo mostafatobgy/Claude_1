@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Right-to-left, two lines:
-    14 جمادى الأولى 1448 | مكة
-    الظهر, 12:05   -06:35   (the red time ticks by itself)
+  Two lines, both starting at the same (left) edge as in the reference design; each line's text is
+  wrapped in a right-to-left isolate in code, so it reads correctly whatever direction the phone uses:
+    مكة | 1448 جمادى الأولى 14      (reads: 14 جمادى الأولى 1448 | مكة)
+    12:05 ,الظهر   06:35-            (red, ticking)
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layoutDirection="rtl"
+    android:gravity="left"
+    android:layoutDirection="ltr"
     android:orientation="vertical">
 
     <TextView
@@ -17,7 +19,6 @@
         android:ellipsize="end"
         android:maxLines="1"
         android:textAppearance="@style/TextAppearance.Compat.Notification.Title"
-        android:textDirection="rtl"
         android:textSize="16sp"
         android:textStyle="bold" />
 
@@ -26,7 +27,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
         android:gravity="center_vertical"
-        android:layoutDirection="rtl"
+        android:layoutDirection="ltr"
         android:orientation="horizontal">
 
         <TextView
@@ -34,7 +35,6 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textAppearance="@style/TextAppearance.Compat.Notification.Title"
-            android:textDirection="rtl"
             android:textSize="16sp"
             android:textStyle="bold" />
 
@@ -42,7 +42,7 @@
             android:id="@+id/prayer_chronometer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
+            android:layout_marginLeft="14dp"
             android:textAppearance="@style/TextAppearance.Compat.Notification.Title"
             android:textColor="#E53935"
             android:textDirection="ltr"

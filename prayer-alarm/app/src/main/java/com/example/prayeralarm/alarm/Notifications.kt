@@ -141,9 +141,12 @@ object Notifications {
         Prayer.ASR to "العصر", Prayer.MAGHRIB to "المغرب", Prayer.ISHA to "العشاء",
     )
 
+    /** Wraps text in a right-to-left isolate so it reads as Arabic even in a left-to-right line. */
+    private fun rtl(text: String) = "\u2067$text\u2069"
+
     /**
      * Two lines: "14 جمادى الأولى 1448 | مكة", then "الظهر, 12:05" with the red time beside it,
-     * counting down to the adhan ("-06:35") and then up from it ("+06:35"). The notification goes
+     * counting down to the adhan ("06:35-") and then up from it ("06:35+"). The notification goes
      * away [minutes] after the adhan. Android's chronometer keeps the time ticking by itself.
      */
     fun showPrayerStatus(context: Context, prayer: Prayer, prayerTime: Long, minutes: Int, elapsed: Boolean) {
@@ -156,10 +159,10 @@ object Notifications {
         // Same instant on the chronometer's clock (time since boot).
         val base = SystemClock.elapsedRealtime() + (prayerTime - System.currentTimeMillis())
         val view = RemoteViews(context.packageName, R.layout.notification_prayer_status).apply {
-            setChronometer(R.id.prayer_chronometer, base, if (elapsed) "+%s" else "-%s", true)
+            setChronometer(R.id.prayer_chronometer, base, if (elapsed) "%s+" else "%s-", true)
             setChronometerCountDown(R.id.prayer_chronometer, !elapsed)
-            setTextViewText(R.id.prayer_header, header)
-            setTextViewText(R.id.prayer_name, "$name, $clock")
+            setTextViewText(R.id.prayer_header, rtl(header))
+            setTextViewText(R.id.prayer_name, rtl("$name, $clock"))
         }
         val endsAt = if (elapsed) prayerTime + minutes * 60_000L else prayerTime + 60_000L
         val notification = NotificationCompat.Builder(context, PRAYER_STATUS_CHANNEL)
