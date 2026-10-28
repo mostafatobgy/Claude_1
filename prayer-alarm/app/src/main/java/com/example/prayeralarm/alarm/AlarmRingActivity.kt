@@ -125,17 +125,14 @@ class AlarmRingActivity : AppCompatActivity() {
     private fun isSideKey(keyCode: Int) = keyCode == KeyEvent.KEYCODE_VOLUME_UP ||
         keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_CAMERA
 
-    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
-        if (sideButtons != SideButtonAction.NONE && isSideKey(keyCode)) {
-            if (event.repeatCount == 0) onSideButton()
+    // Catch the keys before the screen's views or the system volume do.
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (sideButtons != SideButtonAction.NONE && isSideKey(event.keyCode)) {
+            if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) onSideButton()
             return true
         }
-        return super.onKeyDown(keyCode, event)
+        return super.dispatchKeyEvent(event)
     }
-
-    // Swallow the key-up too, so the volume doesn't change.
-    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean =
-        if (sideButtons != SideButtonAction.NONE && isSideKey(keyCode)) true else super.onKeyUp(keyCode, event)
 
     override fun onDestroy() {
         if (receiverRegistered) runCatching { unregisterReceiver(screenOffReceiver) }

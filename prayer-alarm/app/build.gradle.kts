@@ -12,8 +12,8 @@ android {
         applicationId = "com.example.prayeralarm"
         minSdk = 26
         targetSdk = 35
-        versionCode = 7
-        versionName = "3.3"
+        versionCode = 8
+        versionName = "3.4"
     }
     buildTypes {
         release { isMinifyEnabled = false }

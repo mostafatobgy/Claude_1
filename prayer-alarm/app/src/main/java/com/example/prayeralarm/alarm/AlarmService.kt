@@ -10,6 +10,9 @@ import android.content.pm.ServiceInfo
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.media.RingtoneManager
+import android.media.VolumeProvider
+import android.media.session.MediaSession
+import android.media.session.PlaybackState
 import android.net.Uri
 import android.os.Build
 import android.os.Handler
@@ -24,6 +27,7 @@ import androidx.core.content.ContextCompat
 import com.example.prayeralarm.LocaleHelper
 import com.example.prayeralarm.R
 import com.example.prayeralarm.data.AppSettings
+import com.example.prayeralarm.data.SideButtonAction
 import com.example.prayeralarm.data.Store
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -45,6 +49,7 @@ data class RingingAlarm(
 class AlarmService : Service() {
     private var player: MediaPlayer? = null
     private var vibrator: Vibrator? = null
+    private var mediaSession: MediaSession? = null
     private val handler = Handler(Looper.getMainLooper())
     private val autoStop = Runnable { stopRinging() }
     private var volume = 1f
@@ -106,6 +111,7 @@ class AlarmService : Service() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK else 0,
         )
         playSound(alarm, settings)
+        if (settings.sideButtons != SideButtonAction.NONE) startVolumeKeySession() else releaseSession()
         if (settings.vibrate) vibrate() else vibrator?.cancel()
         handler.removeCallbacks(autoStop)
         handler.postDelayed(autoStop, settings.ringMinutes * 60_000L)
@@ -182,7 +188,49 @@ class AlarmService : Service() {
         player = null
     }
 
+    /**
+     * While ringing, an active media session with its own volume control receives the volume keys,
+     * even when the alarm screen isn't showing (phone in use) or the screen is off.
+     */
+    private fun startVolumeKeySession() {
+        if (mediaSession != null) return
+        mediaSession = MediaSession(this, "alarm").apply {
+            setPlaybackToRemote(object : VolumeProvider(VOLUME_CONTROL_RELATIVE, 100, 50) {
+                override fun onAdjustVolume(direction: Int) {
+                    if (direction != 0) handler.post { onSideButton() }
+                }
+            })
+            setPlaybackState(
+                PlaybackState.Builder().setState(PlaybackState.STATE_PLAYING, 0L, 1f).build()
+            )
+            isActive = true
+        }
+    }
+
+    private fun releaseSession() {
+        mediaSession?.run {
+            isActive = false
+            release()
+        }
+        mediaSession = null
+    }
+
+    /** Volume key pressed while ringing: snooze or dismiss, as chosen in Settings. */
+    private fun onSideButton() {
+        val alarm = _ringing.value ?: return
+        val settings = Store(this).appSettings
+        when (settings.sideButtons) {
+            SideButtonAction.SNOOZE -> {
+                AlarmScheduler.scheduleSnooze(this, alarm, settings.snoozeMinutes)
+                stopRinging()
+            }
+            SideButtonAction.DISMISS -> stopRinging()
+            SideButtonAction.NONE -> {}
+        }
+    }
+
     private fun stopRinging() {
+        releaseSession()
         handler.removeCallbacks(autoStop)
         releasePlayer()
         vibrator?.cancel()
@@ -192,6 +240,7 @@ class AlarmService : Service() {
     }
 
     override fun onDestroy() {
+        releaseSession()
         handler.removeCallbacks(autoStop)
         releasePlayer()
         vibrator?.cancel()

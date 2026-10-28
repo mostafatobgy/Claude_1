@@ -26,7 +26,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import android.icu.text.DateFormat as IcuDateFormat
+import com.example.prayeralarm.HijriDate
 import com.example.prayeralarm.MainViewModel
 import com.example.prayeralarm.R
 import com.example.prayeralarm.data.AlarmGroup
@@ -35,11 +35,8 @@ import com.example.prayeralarm.data.AppSettings
 import com.example.prayeralarm.data.Repeat
 import com.example.prayeralarm.data.ScheduleContext
 import kotlinx.coroutines.delay
-import android.icu.util.IslamicCalendar
-import android.icu.util.ULocale
 import java.time.LocalDate
 import java.time.LocalTime
-import java.time.ZoneId
 import java.time.format.FormatStyle
 import java.util.Locale
 import java.time.ZonedDateTime
@@ -180,20 +177,11 @@ private fun nextText(time: ZonedDateTime, now: ZonedDateTime): String {
 private fun DateHeader(date: LocalDate) {
     val locale = Locale.getDefault()
     val gregorian = remember(date, locale) { date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)) }
-    val hijri = remember(date, locale) { hijriDate(date, locale) }
+    val hijri = remember(date, locale) { HijriDate.long(date, locale) }
     AppCard(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primaryContainer) {
         Column(Modifier.padding(horizontal = 18.dp, vertical = 14.dp)) {
             Text(gregorian, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
             Text(hijri, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
         }
     }
-}
-
-private fun hijriDate(date: LocalDate, locale: Locale): String {
-    val uLocale = ULocale.forLocale(locale).setKeywordValue("calendar", "islamic-umalqura")
-    val calendar = IslamicCalendar(uLocale).apply {
-        calculationType = IslamicCalendar.CalculationType.ISLAMIC_UMALQURA
-        timeInMillis = date.atTime(12, 0).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-    }
-    return IcuDateFormat.getDateInstance(calendar, IcuDateFormat.LONG, uLocale).format(calendar.time)
 }
