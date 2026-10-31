@@ -177,7 +177,7 @@ object Notifications {
         val notification = NotificationCompat.Builder(context, PRAYER_STATUS_CHANNEL)
             .setSmallIcon(R.drawable.ic_mosque)
             .setContentTitle("$name $clock")
-            .setContentText(if (elapsed) "حان الآن وقت الأذان" else "بعد ${arabicMinutes(minutes)}")
+            .setContentText(if (elapsed) "حان الآن وقت أذان $name" else "بعد ${arabicMinutes(minutes)}")
             .setCustomContentView(view)
             .setCustomBigContentView(view)
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
