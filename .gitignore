@@ -3,3 +3,5 @@ __pycache__/
 site/news.json
 builder/translations.json
 builder/notified.json
+folder-monitor/config.json
+folder-monitor/alerts.log
