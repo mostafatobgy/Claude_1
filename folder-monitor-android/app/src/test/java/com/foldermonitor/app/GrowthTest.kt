@@ -8,10 +8,12 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
+import java.util.Calendar
+import java.util.TimeZone
 
 class GrowthTest {
     private val mb = Growth.MB
-    private val rules = Rules(intervalMin = 1, windowMin = 10, thresholdMb = 100, cooldownMin = 15)
+    private val rules = Rules(daily = false, intervalMin = 1, windowMin = 10, thresholdMb = 100, thresholdPercent = 0, cooldownMin = 15)
     private val min = 60_000L
 
     @get:Rule val tmp = TemporaryFolder()
@@ -96,5 +98,61 @@ class GrowthTest {
         assertEquals("-3.0 MB", formatSize(-3 * mb))
         assertEquals("45 ثانية", formatSpan(45_000))
         assertEquals("12 دقيقة", formatSpan(12 * min))
+    }
+
+    // ---------------------------------------------------------------- daily mode
+
+    private val hour = Rules.HOUR
+    private val day = 24 * hour
+
+    @Test fun defaultIsDailyAtMidnightWith20Percent() {
+        val d = Rules()
+        assertTrue(d.daily)
+        assertEquals(0, d.dailyHour)
+        assertEquals(20, d.thresholdPercent)
+        assertEquals(0L, d.thresholdMb)
+        assertEquals("12:00 ص", formatClock(0, 0))
+        assertEquals("1:30 م", formatClock(13, 30))
+    }
+
+    @Test fun dailyAlertsOn20PercentOverYesterday() {
+        val r = Rules()
+        val h = FolderHistory("/WhatsApp")
+        h.add(Sample(0, 1000 * mb, mapOf("Video" to 500 * mb)), r.windowMs)
+        h.add(Sample(day + 2 * min, 1150 * mb, mapOf("Video" to 650 * mb)), r.windowMs) // +15%: quiet
+        assertNull(Growth.check(h, r, day + 2 * min))
+        h.add(Sample(2 * day, 1400 * mb, mapOf("Video" to 900 * mb)), r.windowMs) // +21.7% over yesterday
+        val a = Growth.check(h, r, 2 * day)
+        assertNotNull(a)
+        assertEquals(250 * mb, a!!.growth)
+        assertEquals(21, a.percent.toInt())
+        assertEquals(listOf("Video" to 250 * mb), a.topGrowers)
+        assertTrue(a.text().contains("خلال يوم"))
+        // the day before yesterday is no longer part of the comparison
+        assertEquals(2, h.samples.size)
+    }
+
+    @Test fun dailyAlertsAgainNextDay() {
+        val r = Rules()
+        val h = FolderHistory("/x")
+        h.add(Sample(0, 100 * mb, emptyMap()), r.windowMs)
+        h.add(Sample(day, 200 * mb, emptyMap()), r.windowMs)
+        assertNotNull(Growth.check(h, r, day))
+        h.add(Sample(2 * day, 300 * mb, emptyMap()), r.windowMs)
+        assertNotNull(Growth.check(h, r, 2 * day))
+    }
+
+    @Test fun nextRunIsNextMidnight() {
+        val tz = TimeZone.getTimeZone("Africa/Cairo")
+        fun at(y: Int, m: Int, d: Int, hh: Int, mm: Int) = Calendar.getInstance(tz).apply {
+            clear(); set(y, m - 1, d, hh, mm, 0)
+        }.timeInMillis
+        val r = Rules()
+        assertEquals(at(2026, 11, 14, 0, 0), r.nextRun(at(2026, 11, 13, 19, 10), tz))
+        assertEquals(at(2026, 11, 15, 0, 0), r.nextRun(at(2026, 11, 14, 0, 0), tz)) // just ran
+        val r9 = r.copy(dailyHour = 21, dailyMinute = 30)
+        assertEquals(at(2026, 11, 13, 21, 30), r9.nextRun(at(2026, 11, 13, 19, 10), tz))
+        val every = Rules(daily = false, intervalMin = 15)
+        assertEquals(1000L + 15 * min, every.nextRun(1000L, tz))
     }
 }

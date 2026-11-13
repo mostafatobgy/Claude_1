@@ -1,20 +1,51 @@
 package com.foldermonitor.app
 
+import java.util.Calendar
 import java.util.Locale
+import java.util.TimeZone
 
 /** One size measurement of a folder. [children] = size of each top-level item inside it. */
 data class Sample(val t: Long, val size: Long, val children: Map<String, Long>)
 
-/** User settings that decide when to alert. */
+/** User settings that decide when to check and when to alert. */
 data class Rules(
-    val intervalMin: Int = 5,        // how often to measure
-    val windowMin: Int = 30,         // the "short period"
-    val thresholdMb: Long = 300,     // alert if growth within the window >= this (0 = off) ...
-    val thresholdPercent: Int = 0,   // ... or >= this percent (0 = off)
-    val cooldownMin: Int = 30,       // don't repeat an alert for the same folder sooner
+    val daily: Boolean = true,       // true: once a day at dailyHour:dailyMinute; false: every intervalMin
+    val dailyHour: Int = 0,          // 0 = 12 AM (midnight)
+    val dailyMinute: Int = 0,
+    val intervalMin: Int = 60,       // interval mode: how often to measure
+    val windowMin: Int = 60,         // interval mode: the "short period"
+    val thresholdMb: Long = 0,       // alert if growth >= this many MB (0 = off) ...
+    val thresholdPercent: Int = 20,  // ... or >= this percent of the earlier size (0 = off)
+    val cooldownMin: Int = 30,       // interval mode: don't repeat an alert for the same folder sooner
 ) {
-    val windowMs get() = windowMin * 60_000L
-    val cooldownMs get() = cooldownMin * 60_000L
+    // Daily mode compares with the previous day's check. 20 h (not 24) so a check that ran a little
+    // late yesterday still counts as "yesterday" and older days drop out.
+    val windowMs: Long get() = if (daily) 20 * HOUR else windowMin * 60_000L
+    val cooldownMs: Long get() = if (daily) 12 * HOUR else cooldownMin * 60_000L
+
+    /** Wall-clock time of the next scheduled check after [now]. */
+    fun nextRun(now: Long, tz: TimeZone = TimeZone.getDefault()): Long {
+        if (!daily) return now + intervalMin * 60_000L
+        val c = Calendar.getInstance(tz).apply {
+            timeInMillis = now
+            set(Calendar.HOUR_OF_DAY, dailyHour)
+            set(Calendar.MINUTE, dailyMinute)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        if (c.timeInMillis <= now + 30_000L) c.add(Calendar.DAY_OF_MONTH, 1)
+        return c.timeInMillis
+    }
+
+    companion object {
+        const val HOUR = 3_600_000L
+    }
+}
+
+/** "12:00 ص" style time. */
+fun formatClock(hour: Int, minute: Int): String {
+    val h12 = if (hour % 12 == 0) 12 else hour % 12
+    return String.format(Locale.US, "%d:%02d %s", h12, minute, if (hour < 12) "ص" else "م")
 }
 
 /** Recent measurements of one folder, trimmed to the alert window. */
@@ -108,6 +139,7 @@ fun formatSpan(ms: Long): String {
     return when {
         sec < 60 -> "$sec ثانية"
         sec < 3600 -> "${sec / 60} دقيقة"
+        sec in 20 * 3600..30 * 3600 -> "يوم"
         else -> String.format(Locale.US, "%.1f ساعة", sec / 3600.0)
     }
 }

@@ -1,12 +1,14 @@
 package com.foldermonitor.app
 
 import android.Manifest
+import android.app.TimePickerDialog
 import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -15,6 +17,7 @@ import android.os.PowerManager
 import android.provider.Settings
 import android.text.InputType
 import android.view.View
+import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -22,9 +25,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
@@ -51,9 +57,16 @@ class MainActivity : AppCompatActivity() {
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { refresh() }
 
+    override fun attachBaseContext(base: Context) {
+        val config = Configuration(base.resources.configuration)
+        config.setLocale(Locale("ar"))
+        super.attachBaseContext(base.createConfigurationContext(config))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        applyInsets()
         Notifications.ensureChannels(this)
 
         statusText = findViewById(R.id.statusText)
@@ -85,7 +98,7 @@ class MainActivity : AppCompatActivity() {
             this, updateReceiver, IntentFilter(Checker.ACTION_UPDATED), ContextCompat.RECEIVER_NOT_EXPORTED
         )
         // Make sure monitoring is really running if it is switched on.
-        if (Store.isEnabled(this) && hasStorage()) MonitorService.start(this)
+        if (Store.isEnabled(this)) Scheduler.ensureScheduled(this)
         refresh()
     }
 
@@ -165,13 +178,20 @@ class MainActivity : AppCompatActivity() {
             } else if (Store.folders(this).isEmpty()) {
                 Toast.makeText(this, "أضف فولدرًا واحدًا على الأقل", Toast.LENGTH_SHORT).show()
             } else {
-                Store.setEnabled(this, true)
-                MonitorService.start(this)
+                startMonitoring()
             }
         } else {
-            MonitorService.stop(this)
+            Store.setEnabled(this, false)
+            Scheduler.cancel(this)
         }
         refresh()
+    }
+
+    /** Turn monitoring on, set the next alarm, and measure now so there is a starting size. */
+    private fun startMonitoring() {
+        Store.setEnabled(this, true)
+        Scheduler.scheduleNext(this)
+        Checker.runAsync(this)
     }
 
     private fun addFolder() {
@@ -188,12 +208,7 @@ class MainActivity : AppCompatActivity() {
                 return@FolderPicker
             }
             Store.setFolders(this, folders + path)
-            if (!Store.isEnabled(this)) {
-                Store.setEnabled(this, true)
-                MonitorService.start(this) // starts monitoring and measures right away
-            } else {
-                Checker.runAsync(this)
-            }
+            if (!Store.isEnabled(this)) startMonitoring() else Checker.runAsync(this)
             Toast.makeText(this, "جاري قياس الحجم…", Toast.LENGTH_SHORT).show()
             refresh()
         }.show()
@@ -205,7 +220,7 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton("حذف") { _, _ ->
                 val rest = Store.folders(this) - path
                 Store.setFolders(this, rest)
-                if (rest.isEmpty()) MonitorService.stop(this) else Notifications.updateService(this)
+                if (rest.isEmpty()) { Store.setEnabled(this, false); Scheduler.cancel(this) }
                 refresh()
             }
             .setNegativeButton("إلغاء", null)
@@ -224,25 +239,71 @@ class MainActivity : AppCompatActivity() {
 
     private fun showSettings() {
         val r = Store.rules(this)
+        var hour = r.dailyHour
+        var minute = r.dailyMinute
         val container = layoutInflater.inflate(R.layout.dialog_settings, null)
         val fields = container.findViewById<LinearLayout>(R.id.fields)
-        fun field(hint: String, value: Number): TextInputEditText {
+        fun params(top: Int = 12) = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { topMargin = top * resources.displayMetrics.density.toInt() }
+        fun label(text: String) = TextView(this).apply {
+            this.text = text
+            textSize = 14f
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.text_muted))
+            fields.addView(this, params(16))
+        }
+        fun field(hint: String, value: Number, parent: LinearLayout = fields): TextInputEditText {
             val layout = TextInputLayout(this, null, com.google.android.material.R.attr.textInputOutlinedStyle)
             layout.hint = hint
             val edit = TextInputEditText(layout.context)
             edit.inputType = InputType.TYPE_CLASS_NUMBER
             edit.setText(value.toString())
             layout.addView(edit)
-            fields.addView(layout, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { topMargin = 12 })
+            parent.addView(layout, params())
             return edit
         }
-        val mb = field("نبّهني عند زيادة ≥ (ميجابايت)", r.thresholdMb)
-        val window = field("خلال فترة (دقيقة)", r.windowMin)
-        val pct = field("أو عند زيادة ≥ نسبة % (0 = معطّل)", r.thresholdPercent)
-        val interval = field("افحص كل (دقيقة)", r.intervalMin)
-        val cooldown = field("لا تكرر التنبيه لنفس الفولدر قبل (دقيقة)", r.cooldownMin)
+
+        label("متى يتم الفحص؟")
+        val toggle = MaterialButtonToggleGroup(this).apply { isSingleSelection = true; isSelectionRequired = true }
+        fun toggleButton(text: String) = MaterialButton(
+            this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle
+        ).apply {
+            id = View.generateViewId()
+            this.text = text
+            toggle.addView(this, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        }
+        val dailyBtn = toggleButton("يوميًا")
+        val intervalBtn = toggleButton("كل عدة دقائق")
+        fields.addView(toggle, params(4))
+
+        // daily: pick the time
+        val timeBtn = MaterialButton(this).apply {
+            fun show() { text = "الساعة " + formatClock(hour, minute) + "  (اضغط للتغيير)" }
+            show()
+            setOnClickListener {
+                TimePickerDialog(this@MainActivity, { _, h, m -> hour = h; minute = m; show() }, hour, minute, false).show()
+            }
+        }
+        fields.addView(timeBtn, params(8))
+
+        // interval: how often and over what period
+        val intervalBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val interval = field("افحص كل (دقيقة)", r.intervalMin, intervalBox)
+        val window = field("قارن بالحجم قبل (دقيقة)", r.windowMin, intervalBox)
+        val cooldown = field("لا تكرر التنبيه لنفس الفولدر قبل (دقيقة)", r.cooldownMin, intervalBox)
+        fields.addView(intervalBox, params(0))
+
+        fun showMode(daily: Boolean) {
+            timeBtn.visibility = if (daily) View.VISIBLE else View.GONE
+            intervalBox.visibility = if (daily) View.GONE else View.VISIBLE
+        }
+        toggle.addOnButtonCheckedListener { _, id, checked -> if (checked) showMode(id == dailyBtn.id) }
+        toggle.check(if (r.daily) dailyBtn.id else intervalBtn.id)
+        showMode(r.daily)
+
+        label("متى أنبّهك؟ (لكل فولدر، مقارنةً بحجمه في الفحص السابق)")
+        val pct = field("عند زيادة ≥ نسبة % (0 = معطّل)", r.thresholdPercent)
+        val mb = field("أو عند زيادة ≥ ميجابايت (0 = معطّل)", r.thresholdMb)
 
         val dialog = AlertDialog.Builder(this)
             .setTitle(R.string.settings)
@@ -252,7 +313,11 @@ class MainActivity : AppCompatActivity() {
             .show()
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
             fun num(e: TextInputEditText) = e.text?.toString()?.trim()?.toLongOrNull()
+            val daily = toggle.checkedButtonId == dailyBtn.id
             val n = Rules(
+                daily = daily,
+                dailyHour = hour,
+                dailyMinute = minute,
                 intervalMin = (num(interval) ?: -1).toInt(),
                 windowMin = (num(window) ?: -1).toInt(),
                 thresholdMb = num(mb) ?: -1,
@@ -260,27 +325,65 @@ class MainActivity : AppCompatActivity() {
                 cooldownMin = (num(cooldown) ?: -1).toInt(),
             )
             val error = when {
+                n.thresholdMb < 0 || n.thresholdPercent < 0 -> "أدخل أرقامًا صحيحة"
+                n.thresholdMb == 0L && n.thresholdPercent == 0 -> "حدّد النسبة أو الميجابايت"
+                daily -> null
                 n.intervalMin < 1 -> "الفحص يجب أن يكون كل دقيقة على الأقل"
-                n.windowMin < n.intervalMin -> "الفترة يجب أن تكون أطول من أو تساوي مدة الفحص"
-                n.thresholdMb < 0 || n.thresholdPercent < 0 || n.cooldownMin < 0 -> "أدخل أرقامًا صحيحة"
-                n.thresholdMb == 0L && n.thresholdPercent == 0 -> "حدّد الميجابايت أو النسبة"
+                n.windowMin < n.intervalMin -> "مدة المقارنة يجب أن تكون أطول من أو تساوي مدة الفحص"
+                n.cooldownMin < 0 -> "أدخل أرقامًا صحيحة"
                 else -> null
             }
             if (error != null) {
                 Toast.makeText(this, error, Toast.LENGTH_LONG).show()
                 return@setOnClickListener
             }
-            Store.setRules(this, n)
-            if (Store.isEnabled(this)) {
-                Scheduler.scheduleNext(this)
-                Notifications.updateService(this)
-            }
+            // Keep the old interval values if they were invalid but unused in daily mode.
+            val saved = if (daily && (n.intervalMin < 1 || n.windowMin < n.intervalMin || n.cooldownMin < 0))
+                n.copy(intervalMin = r.intervalMin, windowMin = r.windowMin, cooldownMin = r.cooldownMin) else n
+            Store.setRules(this, saved)
+            if (Store.isEnabled(this)) Scheduler.scheduleNext(this)
             dialog.dismiss()
             refresh()
         }
     }
 
+    /** The app draws behind the status and navigation bars (Android 15): keep content clear of them. */
+    private fun applyInsets() {
+        val header = findViewById<View>(R.id.header)
+        val fab = findViewById<View>(R.id.addFab)
+        val list = findViewById<View>(R.id.list)
+        val headerTop = header.paddingTop
+        val fabBottom = (fab.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
+        val listBottom = list.paddingBottom
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.root)) { _, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            header.setPadding(header.paddingLeft, headerTop + bars.top, header.paddingRight, header.paddingBottom)
+            (fab.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin = fabBottom + bars.bottom
+            fab.requestLayout()
+            list.setPadding(list.paddingLeft, list.paddingTop, list.paddingRight, listBottom + bars.bottom)
+            insets
+        }
+    }
+
     // ------------------------------------------------------------------- UI
+
+    /** "اليوم 12:00 ص" / "غدًا …" / "أمس …" / "13/11 …". */
+    private fun whenText(t: Long): String {
+        fun dayStart(ms: Long) = java.util.Calendar.getInstance().apply {
+            timeInMillis = ms
+            set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val days = Math.round((dayStart(t) - dayStart(System.currentTimeMillis())) / 86_400_000.0)
+        val cal = java.util.Calendar.getInstance().apply { timeInMillis = t }
+        val clock = formatClock(cal.get(java.util.Calendar.HOUR_OF_DAY), cal.get(java.util.Calendar.MINUTE))
+        return when (days) {
+            0L -> "اليوم $clock"
+            1L -> "غدًا $clock"
+            -1L -> "أمس $clock"
+            else -> SimpleDateFormat("d/M", Locale.US).format(Date(t)) + " " + clock
+        }
+    }
 
     private fun refresh() {
         val folders = Store.folders(this)
@@ -296,16 +399,21 @@ class MainActivity : AppCompatActivity() {
         settingSwitch = false
 
         val last = Store.lastRun(this)
-        val lastText = if (last > 0) " • آخر فحص " + SimpleDateFormat("HH:mm", Locale.US).format(Date(last)) else ""
+        val next = Store.nextRun(this)
         statusText.text = when {
             Checker.isBusy -> "⏳ جاري الفحص…"
-            enabled -> "● المراقبة تعمل$lastText"
+            enabled && next > 0 -> "● الفحص القادم: " + whenText(next)
+            enabled -> "● المراقبة تعمل"
             else -> "○ المراقبة متوقفة"
         }
         val parts = mutableListOf<String>()
-        if (rules.thresholdMb > 0) parts += "${rules.thresholdMb} MB"
         if (rules.thresholdPercent > 0) parts += "${rules.thresholdPercent}%"
-        rulesText.text = "تنبيه عند زيادة ≥ ${parts.joinToString(" أو ")} خلال ${rules.windowMin} دقيقة • فحص كل ${rules.intervalMin} دقيقة"
+        if (rules.thresholdMb > 0) parts += "${rules.thresholdMb} MB"
+        val schedule = if (rules.daily) "فحص يومي الساعة ${formatClock(rules.dailyHour, rules.dailyMinute)}"
+        else "فحص كل ${rules.intervalMin} دقيقة"
+        val compare = if (rules.daily) "عن حجم أمس" else "خلال ${rules.windowMin} دقيقة"
+        val lastText = if (last > 0) "\nآخر فحص: " + whenText(last) else ""
+        rulesText.text = "$schedule • تنبيه عند زيادة ≥ ${parts.joinToString(" أو ")} $compare$lastText"
         buildSetup()
     }
 }

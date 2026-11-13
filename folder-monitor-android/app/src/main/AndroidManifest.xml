@@ -10,14 +10,14 @@
         android:maxSdkVersion="32" />
     <!-- Alerts. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- Keep monitoring in the background, as a visible "monitoring" notification. -->
+    <!-- Let a check finish in the background (shown as a "checking…" notification while it runs). -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <!-- Wake the phone briefly at each check, on time. -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
-    <!-- Resume monitoring after the phone restarts. -->
+    <!-- Set the next check again after the phone restarts. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
@@ -45,7 +45,7 @@
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Periodically measures user-selected folder sizes and alerts on fast growth" />
+                android:value="Measures user-selected folder sizes at the scheduled time and alerts on large growth" />
         </service>
 
         <receiver android:name=".AlarmReceiver" android:exported="false" />
@@ -54,6 +54,8 @@
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
             </intent-filter>
         </receiver>
     </application>

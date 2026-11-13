@@ -70,7 +70,9 @@ class FolderAdapter(private val onRemove: (String) -> Unit) : RecyclerView.Adapt
                 val (g, base) = h.growth()
                 vh.growth.text = when {
                     base == null -> "أول قياس"
-                    g > 0 -> "+${formatSize(g)} خلال ${formatSpan(now - base.t)}"
+                    g > 0 -> "+${formatSize(g)}" +
+                        (if (base.size > 0) " (${g * 100 / base.size}%)" else "") +
+                        " خلال ${formatSpan(now - base.t)}"
                     else -> "لا زيادة خلال ${formatSpan(now - base.t)}"
                 }
                 vh.growth.setTextColor(ContextCompat.getColor(ctx, if (alerting) R.color.alert else R.color.text_muted))
