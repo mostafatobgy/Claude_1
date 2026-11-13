@@ -42,10 +42,10 @@ object Checker {
         val targets = Store.targets(ctx)
         val rules = Store.rules(ctx)
         val history = Store.loadHistory(ctx)
-        // v3 measures the phone like Settings does (system included); older phone sizes aren't comparable.
-        if (Store.phoneMeasureVersion(ctx) < 3) {
+        // v4 measures the phone like Settings does (system included); older phone sizes aren't comparable.
+        if (Store.phoneMeasureVersion(ctx) < 4) {
             history.remove(Alert.PHONE)
-            Store.setPhoneMeasureVersion(ctx, 3)
+            Store.setPhoneMeasureVersion(ctx, 4)
         }
         history.keys.retainAll(targets.toSet())
         for (key in targets) {
@@ -93,15 +93,20 @@ object Checker {
 object PhoneStorage {
     val root: File get() = Environment.getExternalStorageDirectory()
 
+    /**
+     * Settings shows the advertised size in 1000-based GB (e.g. "256 GB" = 256,000,000,000 bytes)
+     * and used = that minus free space. Android's own API reports 256 × 1024³ instead, so the size
+     * is derived from the data partition, rounded up to the advertised capacity.
+     */
     private fun stats(ctx: Context): Pair<Long, Long> {
-        try {
-            val ssm = ctx.getSystemService(StorageStatsManager::class.java)
-            val total = ssm.getTotalBytes(StorageManager.UUID_DEFAULT)
-            val free = ssm.getFreeBytes(StorageManager.UUID_DEFAULT)
-            if (total > 0) return total to free
-        } catch (e: Exception) { }
-        val st = StatFs(root.path) // fallback: user-data partition only
-        return st.totalBytes to st.availableBytes
+        val data = StatFs(Environment.getDataDirectory().path)
+        val total = advertisedSize(data.totalBytes)
+        val free = try {
+            ctx.getSystemService(StorageStatsManager::class.java).getFreeBytes(StorageManager.UUID_DEFAULT)
+        } catch (e: Exception) {
+            data.availableBytes
+        }
+        return total to free
     }
 
     fun used(ctx: Context): Long = stats(ctx).let { (total, free) -> total - free }

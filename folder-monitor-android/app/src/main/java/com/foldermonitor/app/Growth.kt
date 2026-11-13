@@ -190,6 +190,13 @@ object Growth {
     }
 }
 
+/** Advertised storage capacity (16, 32, 64, 128, 256 … GB, 1000-based) that holds [partitionBytes]. */
+fun advertisedSize(partitionBytes: Long): Long {
+    var gb = 8L
+    while (gb * 1_000_000_000L < partitionBytes) gb *= 2
+    return gb * 1_000_000_000L
+}
+
 fun formatSize(bytes: Long): String {
     val sign = if (bytes < 0) "-" else ""
     var n = kotlin.math.abs(bytes).toDouble()
