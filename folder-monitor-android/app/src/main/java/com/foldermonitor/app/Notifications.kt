@@ -12,14 +12,11 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 object Notifications {
     const val CH_ALERT = "alerts"
     const val CH_SERVICE = "service"
-    const val SERVICE_ID = 1
+    const val CHECKING_ID = 1
 
     fun ensureChannels(ctx: Context) {
         val nm = ctx.getSystemService(NotificationManager::class.java)
@@ -37,22 +34,13 @@ object Notifications {
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
     )
 
-    fun service(ctx: Context): Notification {
+    fun checking(ctx: Context): Notification {
         ensureChannels(ctx)
         val count = Store.folders(ctx).size
-        val rules = Store.rules(ctx)
-        val last = Store.lastRun(ctx)
-        val lastText = if (last > 0) " • آخر فحص " + SimpleDateFormat("HH:mm", Locale.US).format(Date(last)) else ""
-        val stop = PendingIntent.getService(
-            ctx, 1, Intent(ctx, MonitorService::class.java).setAction(MonitorService.ACTION_STOP),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
         return NotificationCompat.Builder(ctx, CH_SERVICE)
             .setSmallIcon(R.drawable.ic_stat)
-            .setContentTitle("يراقب $count فولدر")
-            .setContentText("فحص كل ${rules.intervalMin} دقيقة$lastText")
+            .setContentTitle("جاري فحص $count فولدر…")
             .setContentIntent(openApp(ctx))
-            .addAction(0, "إيقاف المراقبة", stop)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .build()
@@ -61,13 +49,6 @@ object Notifications {
     private fun canNotify(ctx: Context) =
         Build.VERSION.SDK_INT < 33 ||
             ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-
-    fun updateService(ctx: Context) {
-        if (!Store.isEnabled(ctx) || !canNotify(ctx)) return
-        try {
-            NotificationManagerCompat.from(ctx).notify(SERVICE_ID, service(ctx))
-        } catch (e: SecurityException) { }
-    }
 
     fun alert(ctx: Context, a: Alert) {
         ensureChannels(ctx)

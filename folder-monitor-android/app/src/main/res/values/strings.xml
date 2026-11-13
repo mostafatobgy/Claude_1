@@ -7,5 +7,5 @@
     <string name="empty">لا توجد فولدرات بعد.\nاضغط «إضافة فولدر» واختر ما تريد مراقبته،\nمثل التنزيلات أو واتساب أو الكاميرا.</string>
     <string name="setup_title">خطوات مطلوبة ليعمل التطبيق</string>
     <string name="channel_alerts">تنبيهات الزيادة السريعة</string>
-    <string name="channel_service">المراقبة المستمرة</string>
+    <string name="channel_service">الفحص الجاري</string>
 </resources>

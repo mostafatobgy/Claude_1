@@ -19,10 +19,20 @@ object Store {
         prefs(ctx).edit().putString("folders", JSONArray(list).toString()).apply()
     }
 
+    /** Bump when the default rules change in a way existing installs should adopt. */
+    private const val RULES_VERSION = 2
+
     fun rules(ctx: Context): Rules {
         val p = prefs(ctx)
+        if (p.getInt("rulesVersion", 1) < RULES_VERSION) {
+            // v2: default became a daily check at 12 AM with a 20% alert — apply it once.
+            setRules(ctx, Rules())
+        }
         val d = Rules()
         return Rules(
+            daily = p.getBoolean("daily", d.daily),
+            dailyHour = p.getInt("dailyHour", d.dailyHour),
+            dailyMinute = p.getInt("dailyMinute", d.dailyMinute),
             intervalMin = p.getInt("interval", d.intervalMin),
             windowMin = p.getInt("window", d.windowMin),
             thresholdMb = p.getLong("mb", d.thresholdMb),
@@ -33,10 +43,15 @@ object Store {
 
     fun setRules(ctx: Context, r: Rules) {
         prefs(ctx).edit()
+            .putInt("rulesVersion", RULES_VERSION)
+            .putBoolean("daily", r.daily).putInt("dailyHour", r.dailyHour).putInt("dailyMinute", r.dailyMinute)
             .putInt("interval", r.intervalMin).putInt("window", r.windowMin)
             .putLong("mb", r.thresholdMb).putInt("pct", r.thresholdPercent)
-            .putInt("cooldown", r.cooldownMin).apply()
+            .putInt("cooldown", r.cooldownMin).commit()
     }
+
+    fun nextRun(ctx: Context) = prefs(ctx).getLong("nextRun", 0L)
+    fun setNextRun(ctx: Context, t: Long) = prefs(ctx).edit().putLong("nextRun", t).apply()
 
     fun isEnabled(ctx: Context) = prefs(ctx).getBoolean("enabled", false)
     fun setEnabled(ctx: Context, on: Boolean) = prefs(ctx).edit().putBoolean("enabled", on).apply()
