@@ -202,7 +202,7 @@ class MainActivity : AppCompatActivity() {
         }
         FolderPicker(this) { dir: File ->
             val path = dir.absolutePath
-            val targets = Store.targets(this)
+            val folders = Store.folders(this)
             if (path in folders) {
                 Toast.makeText(this, "هذا الفولدر مضاف بالفعل", Toast.LENGTH_SHORT).show()
                 return@FolderPicker
