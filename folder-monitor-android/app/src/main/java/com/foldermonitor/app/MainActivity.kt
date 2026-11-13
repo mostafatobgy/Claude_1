@@ -1,0 +1,311 @@
+package com.foldermonitor.app
+
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.os.Bundle
+import android.os.Environment
+import android.os.PowerManager
+import android.provider.Settings
+import android.text.InputType
+import android.view.View
+import android.widget.LinearLayout
+import android.widget.TextView
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.materialswitch.MaterialSwitch
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+class MainActivity : AppCompatActivity() {
+
+    private lateinit var adapter: FolderAdapter
+    private lateinit var statusText: TextView
+    private lateinit var rulesText: TextView
+    private lateinit var empty: TextView
+    private lateinit var setupCard: View
+    private lateinit var setupButtons: LinearLayout
+    private lateinit var enabledSwitch: MaterialSwitch
+    private var settingSwitch = false
+
+    private val updateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) = refresh()
+    }
+
+    private val permissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { refresh() }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+        Notifications.ensureChannels(this)
+
+        statusText = findViewById(R.id.statusText)
+        rulesText = findViewById(R.id.rulesText)
+        empty = findViewById(R.id.empty)
+        setupCard = findViewById(R.id.setupCard)
+        setupButtons = findViewById(R.id.setupButtons)
+        enabledSwitch = findViewById(R.id.enabledSwitch)
+
+        adapter = FolderAdapter(::confirmRemove)
+        findViewById<RecyclerView>(R.id.list).apply {
+            layoutManager = LinearLayoutManager(this@MainActivity)
+            adapter = this@MainActivity.adapter
+        }
+        findViewById<View>(R.id.addFab).setOnClickListener { addFolder() }
+        findViewById<View>(R.id.settingsBtn).setOnClickListener { showSettings() }
+        findViewById<View>(R.id.refreshBtn).setOnClickListener { checkNow() }
+        enabledSwitch.setOnCheckedChangeListener { _, on -> if (!settingSwitch) setMonitoring(on) }
+
+        if (Build.VERSION.SDK_INT >= 33 && !hasNotifications()) {
+            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
+    override fun onStart() {
+        super.onStart()
+        ContextCompat.registerReceiver(
+            this, updateReceiver, IntentFilter(Checker.ACTION_UPDATED), ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+        // Make sure monitoring is really running if it is switched on.
+        if (Store.isEnabled(this) && hasStorage()) MonitorService.start(this)
+        refresh()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        unregisterReceiver(updateReceiver)
+    }
+
+    // ----------------------------------------------------------- permissions
+
+    private fun hasStorage() =
+        if (Build.VERSION.SDK_INT >= 30) Environment.isExternalStorageManager()
+        else ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) ==
+            PackageManager.PERMISSION_GRANTED
+
+    private fun requestStorage() {
+        if (Build.VERSION.SDK_INT >= 30) {
+            try {
+                startActivity(
+                    Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:$packageName"))
+                )
+            } catch (e: Exception) {
+                startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+            }
+        } else {
+            permissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
+    }
+
+    private fun hasNotifications() = Build.VERSION.SDK_INT < 33 ||
+        ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+        PackageManager.PERMISSION_GRANTED
+
+    private fun ignoresBattery() =
+        getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(packageName)
+
+    @SuppressLint("BatteryLife")
+    private fun buildSetup() {
+        while (setupButtons.childCount > 1) setupButtons.removeViewAt(1)
+        fun add(text: String, required: Boolean, action: () -> Unit) {
+            val b = MaterialButton(
+                this, null,
+                if (required) com.google.android.material.R.attr.materialButtonStyle
+                else com.google.android.material.R.attr.materialButtonOutlinedStyle
+            )
+            b.text = text
+            b.isAllCaps = false
+            b.setOnClickListener { action() }
+            setupButtons.addView(b, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = 8 })
+        }
+        if (!hasStorage()) add("السماح بقراءة أحجام الملفات (ضروري)", true, ::requestStorage)
+        if (!hasNotifications()) add("السماح بالإشعارات (ضروري للتنبيه)", true) {
+            if (Build.VERSION.SDK_INT >= 33) permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        if (!ignoresBattery()) add("السماح بالعمل في الخلفية (مستحسن)", false) {
+            try {
+                startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")))
+            } catch (e: Exception) {
+                startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+            }
+        }
+        if (Build.VERSION.SDK_INT >= 31 && !Scheduler.canExact(this)) add("السماح بالفحص في الموعد بالضبط (مستحسن)", false) {
+            startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:$packageName")))
+        }
+        setupCard.visibility = if (setupButtons.childCount > 1) View.VISIBLE else View.GONE
+    }
+
+    // --------------------------------------------------------------- actions
+
+    private fun setMonitoring(on: Boolean) {
+        if (on) {
+            if (!hasStorage()) {
+                Toast.makeText(this, "اسمح أولًا بقراءة الملفات", Toast.LENGTH_LONG).show()
+                requestStorage()
+            } else if (Store.folders(this).isEmpty()) {
+                Toast.makeText(this, "أضف فولدرًا واحدًا على الأقل", Toast.LENGTH_SHORT).show()
+            } else {
+                Store.setEnabled(this, true)
+                MonitorService.start(this)
+            }
+        } else {
+            MonitorService.stop(this)
+        }
+        refresh()
+    }
+
+    private fun addFolder() {
+        if (!hasStorage()) {
+            Toast.makeText(this, "اسمح أولًا بقراءة الملفات، ثم ارجع للتطبيق", Toast.LENGTH_LONG).show()
+            requestStorage()
+            return
+        }
+        FolderPicker(this) { dir: File ->
+            val path = dir.absolutePath
+            val folders = Store.folders(this)
+            if (path in folders) {
+                Toast.makeText(this, "هذا الفولدر مضاف بالفعل", Toast.LENGTH_SHORT).show()
+                return@FolderPicker
+            }
+            Store.setFolders(this, folders + path)
+            if (!Store.isEnabled(this)) {
+                Store.setEnabled(this, true)
+                MonitorService.start(this) // starts monitoring and measures right away
+            } else {
+                Checker.runAsync(this)
+            }
+            Toast.makeText(this, "جاري قياس الحجم…", Toast.LENGTH_SHORT).show()
+            refresh()
+        }.show()
+    }
+
+    private fun confirmRemove(path: String) {
+        AlertDialog.Builder(this)
+            .setMessage("إيقاف مراقبة «${File(path).name}»؟")
+            .setPositiveButton("حذف") { _, _ ->
+                val rest = Store.folders(this) - path
+                Store.setFolders(this, rest)
+                if (rest.isEmpty()) MonitorService.stop(this) else Notifications.updateService(this)
+                refresh()
+            }
+            .setNegativeButton("إلغاء", null)
+            .show()
+    }
+
+    private fun checkNow() {
+        if (Store.folders(this).isEmpty()) return
+        if (Checker.isBusy) {
+            Toast.makeText(this, "الفحص جارٍ بالفعل…", Toast.LENGTH_SHORT).show()
+            return
+        }
+        Checker.runAsync(this)
+        refresh()
+    }
+
+    private fun showSettings() {
+        val r = Store.rules(this)
+        val container = layoutInflater.inflate(R.layout.dialog_settings, null)
+        val fields = container.findViewById<LinearLayout>(R.id.fields)
+        fun field(hint: String, value: Number): TextInputEditText {
+            val layout = TextInputLayout(this, null, com.google.android.material.R.attr.textInputOutlinedStyle)
+            layout.hint = hint
+            val edit = TextInputEditText(layout.context)
+            edit.inputType = InputType.TYPE_CLASS_NUMBER
+            edit.setText(value.toString())
+            layout.addView(edit)
+            fields.addView(layout, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = 12 })
+            return edit
+        }
+        val mb = field("نبّهني عند زيادة ≥ (ميجابايت)", r.thresholdMb)
+        val window = field("خلال فترة (دقيقة)", r.windowMin)
+        val pct = field("أو عند زيادة ≥ نسبة % (0 = معطّل)", r.thresholdPercent)
+        val interval = field("افحص كل (دقيقة)", r.intervalMin)
+        val cooldown = field("لا تكرر التنبيه لنفس الفولدر قبل (دقيقة)", r.cooldownMin)
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(R.string.settings)
+            .setView(container)
+            .setPositiveButton("حفظ", null)
+            .setNegativeButton("إلغاء", null)
+            .show()
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            fun num(e: TextInputEditText) = e.text?.toString()?.trim()?.toLongOrNull()
+            val n = Rules(
+                intervalMin = (num(interval) ?: -1).toInt(),
+                windowMin = (num(window) ?: -1).toInt(),
+                thresholdMb = num(mb) ?: -1,
+                thresholdPercent = (num(pct) ?: -1).toInt(),
+                cooldownMin = (num(cooldown) ?: -1).toInt(),
+            )
+            val error = when {
+                n.intervalMin < 1 -> "الفحص يجب أن يكون كل دقيقة على الأقل"
+                n.windowMin < n.intervalMin -> "الفترة يجب أن تكون أطول من أو تساوي مدة الفحص"
+                n.thresholdMb < 0 || n.thresholdPercent < 0 || n.cooldownMin < 0 -> "أدخل أرقامًا صحيحة"
+                n.thresholdMb == 0L && n.thresholdPercent == 0 -> "حدّد الميجابايت أو النسبة"
+                else -> null
+            }
+            if (error != null) {
+                Toast.makeText(this, error, Toast.LENGTH_LONG).show()
+                return@setOnClickListener
+            }
+            Store.setRules(this, n)
+            if (Store.isEnabled(this)) {
+                Scheduler.scheduleNext(this)
+                Notifications.updateService(this)
+            }
+            dialog.dismiss()
+            refresh()
+        }
+    }
+
+    // ------------------------------------------------------------------- UI
+
+    private fun refresh() {
+        val folders = Store.folders(this)
+        val history = Store.loadHistory(this)
+        val rules = Store.rules(this)
+        val enabled = Store.isEnabled(this)
+
+        adapter.submit(folders.map { it to history[it] }, rules)
+        empty.visibility = if (folders.isEmpty()) View.VISIBLE else View.GONE
+
+        settingSwitch = true
+        enabledSwitch.isChecked = enabled
+        settingSwitch = false
+
+        val last = Store.lastRun(this)
+        val lastText = if (last > 0) " • آخر فحص " + SimpleDateFormat("HH:mm", Locale.US).format(Date(last)) else ""
+        statusText.text = when {
+            Checker.isBusy -> "⏳ جاري الفحص…"
+            enabled -> "● المراقبة تعمل$lastText"
+            else -> "○ المراقبة متوقفة"
+        }
+        val parts = mutableListOf<String>()
+        if (rules.thresholdMb > 0) parts += "${rules.thresholdMb} MB"
+        if (rules.thresholdPercent > 0) parts += "${rules.thresholdPercent}%"
+        rulesText.text = "تنبيه عند زيادة ≥ ${parts.joinToString(" أو ")} خلال ${rules.windowMin} دقيقة • فحص كل ${rules.intervalMin} دقيقة"
+        buildSetup()
+    }
+}

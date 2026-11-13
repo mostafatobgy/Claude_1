@@ -1,0 +1,94 @@
+package com.foldermonitor.app
+
+import android.content.Context
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.File
+
+/** Settings (SharedPreferences) and measurement history (a JSON file in app storage). */
+object Store {
+    private fun prefs(ctx: Context) = ctx.getSharedPreferences("monitor", Context.MODE_PRIVATE)
+    private val historyLock = Any()
+
+    fun folders(ctx: Context): List<String> {
+        val arr = JSONArray(prefs(ctx).getString("folders", "[]"))
+        return List(arr.length()) { arr.getString(it) }
+    }
+
+    fun setFolders(ctx: Context, list: List<String>) {
+        prefs(ctx).edit().putString("folders", JSONArray(list).toString()).apply()
+    }
+
+    fun rules(ctx: Context): Rules {
+        val p = prefs(ctx)
+        val d = Rules()
+        return Rules(
+            intervalMin = p.getInt("interval", d.intervalMin),
+            windowMin = p.getInt("window", d.windowMin),
+            thresholdMb = p.getLong("mb", d.thresholdMb),
+            thresholdPercent = p.getInt("pct", d.thresholdPercent),
+            cooldownMin = p.getInt("cooldown", d.cooldownMin),
+        )
+    }
+
+    fun setRules(ctx: Context, r: Rules) {
+        prefs(ctx).edit()
+            .putInt("interval", r.intervalMin).putInt("window", r.windowMin)
+            .putLong("mb", r.thresholdMb).putInt("pct", r.thresholdPercent)
+            .putInt("cooldown", r.cooldownMin).apply()
+    }
+
+    fun isEnabled(ctx: Context) = prefs(ctx).getBoolean("enabled", false)
+    fun setEnabled(ctx: Context, on: Boolean) = prefs(ctx).edit().putBoolean("enabled", on).apply()
+
+    fun lastRun(ctx: Context) = prefs(ctx).getLong("lastRun", 0L)
+    fun setLastRun(ctx: Context, t: Long) = prefs(ctx).edit().putLong("lastRun", t).apply()
+
+    private fun historyFile(ctx: Context) = File(ctx.filesDir, "history.json")
+
+    fun loadHistory(ctx: Context): MutableMap<String, FolderHistory> = synchronized(historyLock) {
+        val out = LinkedHashMap<String, FolderHistory>()
+        val f = historyFile(ctx)
+        if (!f.exists()) return out
+        try {
+            val root = JSONObject(f.readText())
+            for (path in root.keys()) {
+                val o = root.getJSONObject(path)
+                val h = FolderHistory(path)
+                if (o.has("lastAlertAt")) h.lastAlertAt = o.getLong("lastAlertAt")
+                h.lastAlertText = o.optString("lastAlertText")
+                h.error = o.optString("error")
+                val arr = o.getJSONArray("samples")
+                for (i in 0 until arr.length()) {
+                    val s = arr.getJSONObject(i)
+                    val c = s.getJSONObject("c")
+                    val children = HashMap<String, Long>()
+                    for (k in c.keys()) children[k] = c.getLong(k)
+                    h.samples.add(Sample(s.getLong("t"), s.getLong("s"), children))
+                }
+                out[path] = h
+            }
+        } catch (e: Exception) {
+            // corrupt file: start fresh rather than crash
+        }
+        return out
+    }
+
+    fun saveHistory(ctx: Context, map: Map<String, FolderHistory>) = synchronized(historyLock) {
+        val root = JSONObject()
+        for ((path, h) in map) {
+            val arr = JSONArray()
+            for (s in h.samples) {
+                arr.put(JSONObject().put("t", s.t).put("s", s.size).put("c", JSONObject(s.children as Map<*, *>)))
+            }
+            val o = JSONObject().put("samples", arr)
+                .put("lastAlertText", h.lastAlertText).put("error", h.error)
+            h.lastAlertAt?.let { o.put("lastAlertAt", it) }
+            root.put(path, o)
+        }
+        val f = historyFile(ctx)
+        val tmp = File(f.path + ".tmp")
+        tmp.writeText(root.toString())
+        tmp.renameTo(f)
+    }
+}
