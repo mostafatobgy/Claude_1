@@ -155,4 +155,90 @@ class GrowthTest {
         val every = Rules(daily = false, intervalMin = 15)
         assertEquals(1000L + 15 * min, every.nextRun(1000L, tz))
     }
+
+    // ------------------------------------------------- whole phone + finding the cause
+
+    @Test fun phoneUsesItsOwnMbThreshold() {
+        val r = Rules() // phone: 1024 MB, folders: 20%
+        val h = FolderHistory(Alert.PHONE)
+        h.add(Sample(0, 100_000 * mb, emptyMap()), r.windowMs)
+        h.add(Sample(day, 100_900 * mb, emptyMap()), r.windowMs) // +900 MB: quiet
+        assertNull(Growth.check(h, r, day))
+        h.add(Sample(2 * day, 102_000 * mb, emptyMap()), r.windowMs) // +1.1 GB
+        val a = Growth.check(h, r, 2 * day)!!
+        assertEquals(1100 * mb, a.growth)
+        assertTrue(a.title().contains("الهاتف"))
+    }
+
+    @Test fun culpritsAreTheDeepestFoldersHoldingTheGrowth() {
+        val prev = mapOf(
+            "" to 10_000 * mb,
+            "Android" to 3000 * mb, "Android/media" to 3000 * mb,
+            "Android/media/com.whatsapp" to 2000 * mb,
+            "Android/media/com.whatsapp/WhatsApp" to 2000 * mb,
+            "Android/media/com.whatsapp/WhatsApp/Media" to 2000 * mb,
+            "Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video" to 1500 * mb,
+            "Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images" to 500 * mb,
+            "Download" to 1000 * mb,
+            "DCIM" to 4000 * mb,
+        )
+        val cur = prev + mapOf(
+            "" to 11_700 * mb,
+            "Android" to 4200 * mb, "Android/media" to 4200 * mb,
+            "Android/media/com.whatsapp" to 3200 * mb,
+            "Android/media/com.whatsapp/WhatsApp" to 3200 * mb,
+            "Android/media/com.whatsapp/WhatsApp/Media" to 3200 * mb,
+            "Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video" to 2700 * mb, // +1.2 GB
+            "Download" to 1500 * mb,                                                    // +500 MB
+            "DCIM" to 4005 * mb,                                                        // +5 MB: noise
+        )
+        val got = Culprits.folders(prev, cur, 1700 * mb)
+        assertEquals(
+            listOf(
+                "Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video" to 1200 * mb,
+                "Download" to 500 * mb,
+            ),
+            got,
+        )
+        assertEquals("…/Media/WhatsApp Video", Alert.shortFolder(got[0].first))
+    }
+
+    @Test fun growthSpreadAcrossSubfoldersListsEachOne() {
+        val prev = mapOf("" to 0L, "Movies" to 0L)
+        val cur = mapOf("" to 1000 * mb, "Movies" to 1000 * mb, "Movies/a" to 300 * mb, "Movies/b" to 300 * mb, "Movies/c" to 400 * mb)
+        assertEquals(listOf("Movies/c" to 400 * mb, "Movies/a" to 300 * mb, "Movies/b" to 300 * mb),
+            Culprits.folders(prev, cur, 1000 * mb))
+    }
+
+    @Test fun scannerRecordsFolderSizesAndRecentFiles() {
+        val root = tmp.newFolder("phone")
+        File(root, "Old").mkdirs()
+        val old = File(root, "Old/old.bin").apply { writeBytes(ByteArray(2 * mb.toInt())) }
+        old.setLastModified(1_000L)
+        File(root, "Download/x").mkdirs()
+        File(root, "Download/x/new.mp4").writeBytes(ByteArray(3 * mb.toInt()))
+        File(root, "Download/small.txt").writeBytes(ByteArray(10))
+        val r = Scanner.scan(root, since = 1_000_000L)
+        assertEquals(5 * mb + 10, r.total)
+        assertEquals(5 * mb + 10, r.dirs[""])
+        assertEquals(3 * mb + 10, r.dirs["Download"])
+        assertEquals(3 * mb, r.dirs["Download/x"])
+        assertEquals(2 * mb, r.dirs["Old"])
+        assertEquals(mapOf("Old" to 2 * mb, "Download" to 3 * mb + 10), r.children)
+        assertEquals("Download/x/new.mp4", r.recent.first().path) // old.bin is not "recent"
+        assertTrue(r.recent.none { it.path.contains("old.bin") })
+    }
+
+    @Test fun alertTextNamesFoldersFilesAndAppData() {
+        val a = Alert(
+            Alert.PHONE, 2048 * mb, 2.0, 24 * hour, 102_000 * mb, emptyList(),
+            folders = listOf("Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video" to 1200 * mb),
+            files = listOf(FileInfo("Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video/VID-1.mp4", 900 * mb)),
+            unexplained = 700 * mb,
+        )
+        val t = a.text()
+        assertTrue(t, t.contains("📁 السبب: …/Media/WhatsApp Video (+1.2 GB)"))
+        assertTrue(t, t.contains("VID-1.mp4 (900.0 MB) في …/Media/WhatsApp Video"))
+        assertTrue(t, t.contains("700.0 MB في بيانات التطبيقات"))
+    }
 }

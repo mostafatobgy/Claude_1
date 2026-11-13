@@ -38,6 +38,8 @@ object Store {
             thresholdMb = p.getLong("mb", d.thresholdMb),
             thresholdPercent = p.getInt("pct", d.thresholdPercent),
             cooldownMin = p.getInt("cooldown", d.cooldownMin),
+            phoneMb = p.getLong("phoneMb", d.phoneMb),
+            phonePercent = p.getInt("phonePct", d.phonePercent),
         )
     }
 
@@ -47,17 +49,57 @@ object Store {
             .putBoolean("daily", r.daily).putInt("dailyHour", r.dailyHour).putInt("dailyMinute", r.dailyMinute)
             .putInt("interval", r.intervalMin).putInt("window", r.windowMin)
             .putLong("mb", r.thresholdMb).putInt("pct", r.thresholdPercent)
-            .putInt("cooldown", r.cooldownMin).commit()
+            .putInt("cooldown", r.cooldownMin)
+            .putLong("phoneMb", r.phoneMb).putInt("phonePct", r.phonePercent).commit()
     }
 
     fun nextRun(ctx: Context) = prefs(ctx).getLong("nextRun", 0L)
     fun setNextRun(ctx: Context, t: Long) = prefs(ctx).edit().putLong("nextRun", t).apply()
+
+    /** Whole-phone check (on by default). */
+    fun phoneEnabled(ctx: Context) = prefs(ctx).getBoolean("phone", true)
+    fun setPhoneEnabled(ctx: Context, on: Boolean) = prefs(ctx).edit().putBoolean("phone", on).apply()
+
+    /** Everything checked: the whole phone (if on) followed by the added folders. */
+    fun targets(ctx: Context): List<String> =
+        (if (phoneEnabled(ctx)) listOf(Alert.PHONE) else emptyList()) + folders(ctx)
 
     fun isEnabled(ctx: Context) = prefs(ctx).getBoolean("enabled", false)
     fun setEnabled(ctx: Context, on: Boolean) = prefs(ctx).edit().putBoolean("enabled", on).apply()
 
     fun lastRun(ctx: Context) = prefs(ctx).getLong("lastRun", 0L)
     fun setLastRun(ctx: Context, t: Long) = prefs(ctx).edit().putLong("lastRun", t).apply()
+
+    // ---- per-folder size snapshots from the last check, to see which sub-folders grew
+
+    private fun snapshotDir(ctx: Context) = File(ctx.filesDir, "snapshots").apply { mkdirs() }
+    private fun snapshotName(key: String) = key.hashCode().toUInt().toString(16) + ".tsv"
+
+    fun loadSnapshot(ctx: Context, key: String): Map<String, Long>? {
+        val f = File(snapshotDir(ctx), snapshotName(key))
+        if (!f.exists()) return null
+        return try {
+            f.readLines().mapNotNull { line ->
+                val tab = line.indexOf('\t')
+                if (tab < 0) null else line.substring(tab + 1) to line.substring(0, tab).toLong()
+            }.toMap()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    fun saveSnapshot(ctx: Context, key: String, dirs: Map<String, Long>) {
+        val f = File(snapshotDir(ctx), snapshotName(key))
+        val tmp = File(f.path + ".tmp")
+        tmp.bufferedWriter().use { w -> for ((path, size) in dirs) { w.write("$size\t$path\n") } }
+        tmp.renameTo(f)
+    }
+
+    /** Delete snapshots of folders that are no longer checked. */
+    fun pruneSnapshots(ctx: Context, keep: Collection<String>) {
+        val names = keep.map(::snapshotName).toSet()
+        snapshotDir(ctx).listFiles()?.forEach { if (it.name !in names) it.delete() }
+    }
 
     private fun historyFile(ctx: Context) = File(ctx.filesDir, "history.json")
 

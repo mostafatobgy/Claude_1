@@ -17,6 +17,8 @@ data class Rules(
     val thresholdMb: Long = 0,       // alert if growth >= this many MB (0 = off) ...
     val thresholdPercent: Int = 20,  // ... or >= this percent of the earlier size (0 = off)
     val cooldownMin: Int = 30,       // interval mode: don't repeat an alert for the same folder sooner
+    val phoneMb: Long = 1024,        // whole phone: alert if used space grew >= this many MB (0 = off) ...
+    val phonePercent: Int = 0,       // ... or >= this percent (0 = off)
 ) {
     // Daily mode compares with the previous day's check. 20 h (not 24) so a check that ran a little
     // late yesterday still counts as "yesterday" and older days drop out.
@@ -76,6 +78,9 @@ class FolderHistory(val path: String) {
         lastAlertAt?.let { now - it < rules.cooldownMs } ?: false
 }
 
+/** A file that is new or was changed since the previous check. [path] is relative to the checked folder. */
+data class FileInfo(val path: String, val size: Long)
+
 data class Alert(
     val path: String,
     val growth: Long,
@@ -83,18 +88,74 @@ data class Alert(
     val spanMs: Long,
     val size: Long,
     val topGrowers: List<Pair<String, Long>>,
+    val folders: List<Pair<String, Long>> = emptyList(), // sub-folders that caused the growth
+    val files: List<FileInfo> = emptyList(),             // biggest new/changed files
+    val unexplained: Long = 0,                           // whole phone: growth outside readable files
 ) {
-    val name: String get() = path.trimEnd('/').substringAfterLast('/').ifEmpty { path }
+    val isPhone get() = path == PHONE
+    val name: String get() = if (isPhone) "الهاتف كله" else path.trimEnd('/').substringAfterLast('/').ifEmpty { path }
 
-    fun title() = "⚠ زيادة سريعة في: $name"
+    fun title() = if (isPhone) "⚠ زيادة في مساحة الهاتف" else "⚠ زيادة في: $name"
 
     fun text(): String {
         val pct = if (percent.isInfinite()) "" else " (${percent.toInt()}%)"
-        var msg = "زاد ${formatSize(growth)}$pct خلال ${formatSpan(spanMs)} — الحجم الآن ${formatSize(size)}"
-        if (topGrowers.isNotEmpty()) {
-            msg += "\nأكثر ما زاد: " + topGrowers.joinToString("، ") { (n, g) -> "$n (+${formatSize(g)})" }
+        val lines = mutableListOf(
+            if (isPhone) "زادت المساحة المستخدمة ${formatSize(growth)}$pct خلال ${formatSpan(spanMs)} — المستخدم الآن ${formatSize(size)}"
+            else "زاد ${formatSize(growth)}$pct خلال ${formatSpan(spanMs)} — الحجم الآن ${formatSize(size)}"
+        )
+        if (folders.isNotEmpty()) {
+            lines += "📁 السبب: " + folders.joinToString("، ") { (f, g) -> "${shortFolder(f)} (+${formatSize(g)})" }
+        } else if (topGrowers.isNotEmpty()) {
+            lines += "📁 أكثر ما زاد: " + topGrowers.joinToString("، ") { (n, g) -> "$n (+${formatSize(g)})" }
         }
-        return msg
+        val bigFiles = files.filter { it.size >= Growth.MB }.take(3)
+        if (bigFiles.isNotEmpty()) {
+            lines += "📄 ملفات جديدة: " + bigFiles.joinToString("، ") { f ->
+                val dir = f.path.substringBeforeLast('/', "")
+                f.path.substringAfterLast('/') + " (${formatSize(f.size)})" + if (dir.isEmpty()) "" else " في ${shortFolder(dir)}"
+            }
+        }
+        if (unexplained > 0) {
+            lines += "❔ ${formatSize(unexplained)} في بيانات التطبيقات (لا يمكن معرفة ملفاتها)"
+        }
+        return lines.joinToString("\n")
+    }
+
+    companion object {
+        const val PHONE = "::phone"
+
+        /** Long paths keep only their last two folders: "…/WhatsApp/Media". */
+        fun shortFolder(rel: String): String {
+            val parts = rel.split('/').filter { it.isNotEmpty() }
+            return when {
+                parts.isEmpty() -> "الجذر"
+                parts.size <= 3 -> parts.joinToString("/")
+                else -> "…/" + parts.takeLast(2).joinToString("/")
+            }
+        }
+    }
+}
+
+/** Finds where in a folder tree the growth happened, from two per-folder size snapshots. */
+object Culprits {
+    /**
+     * [prev]/[cur]: folder path (relative, "" = root) → total size. Returns up to 3 of the deepest
+     * folders that hold the growth: a folder is reported when no single sub-folder accounts for
+     * 80% of its growth (so the growth is really "in" it, not just passing through).
+     */
+    fun folders(prev: Map<String, Long>, cur: Map<String, Long>, total: Long): List<Pair<String, Long>> {
+        val growth = (cur.keys + prev.keys).associateWith { (cur[it] ?: 0L) - (prev[it] ?: 0L) }
+        val limit = maxOf(total / 10, Growth.MB)
+        val cand = growth.filter { it.key.isNotEmpty() && it.value >= limit }
+        val maxChild = HashMap<String, Long>()
+        for ((p, g) in cand) {
+            val parent = p.substringBeforeLast('/', "")
+            maxChild[parent] = maxOf(maxChild[parent] ?: 0L, g)
+        }
+        val hot = cand.filter { (p, g) -> (maxChild[p] ?: 0L) < g * 0.8 }
+        // Prefer the deepest: drop a folder when one of its sub-folders is also reported.
+        val deepest = hot.filter { (p, _) -> hot.keys.none { it != p && it.startsWith("$p/") } }
+        return deepest.entries.sortedByDescending { it.value }.take(3).map { it.key to it.value }
     }
 }
 
@@ -105,10 +166,13 @@ object Growth {
     fun check(h: FolderHistory, rules: Rules, now: Long): Alert? {
         val (growth, base) = h.growth()
         if (base == null || growth <= 0) return null
-        val mbHit = rules.thresholdMb > 0 && growth >= rules.thresholdMb * MB
+        val isPhone = h.path == Alert.PHONE
+        val thresholdMb = if (isPhone) rules.phoneMb else rules.thresholdMb
+        val thresholdPercent = if (isPhone) rules.phonePercent else rules.thresholdPercent
+        val mbHit = thresholdMb > 0 && growth >= thresholdMb * MB
         // Percent only makes sense from a non-trivial starting size; otherwise any first file is "infinite %".
         val percent = if (base.size > 0) growth * 100.0 / base.size else Double.POSITIVE_INFINITY
-        val pctHit = rules.thresholdPercent > 0 && base.size >= MB && percent >= rules.thresholdPercent
+        val pctHit = thresholdPercent > 0 && base.size >= MB && percent >= thresholdPercent
         if (!mbHit && !pctHit) return null
         if (h.isAlerting(now, rules)) return null
         h.lastAlertAt = now

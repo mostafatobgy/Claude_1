@@ -43,8 +43,13 @@ class FolderAdapter(private val onRemove: (String) -> Unit) : RecyclerView.Adapt
         val (path, h) = rows[position]
         val ctx = vh.itemView.context
         val now = System.currentTimeMillis()
-        vh.name.text = File(path).name.ifEmpty { path }
-        vh.path.text = FolderPicker.displayPath(path)
+        if (path == Alert.PHONE) {
+            vh.name.text = "📱 الهاتف كله"
+            vh.path.text = "المساحة المستخدمة من " + formatSize(PhoneStorage.total())
+        } else {
+            vh.name.text = File(path).name.ifEmpty { path }
+            vh.path.text = FolderPicker.displayPath(path)
+        }
         vh.remove.setOnClickListener { onRemove(path) }
 
         val alerting = h != null && h.isAlerting(now, rules)

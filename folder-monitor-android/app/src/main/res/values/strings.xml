@@ -4,7 +4,7 @@
     <string name="add_folder">إضافة فولدر</string>
     <string name="check_now">فحص الآن</string>
     <string name="settings">الإعدادات</string>
-    <string name="empty">لا توجد فولدرات بعد.\nاضغط «إضافة فولدر» واختر ما تريد مراقبته،\nمثل التنزيلات أو واتساب أو الكاميرا.</string>
+    <string name="empty">لا يوجد شيء للمراقبة.\nفعّل «فحص الهاتف كله» من الإعدادات، أو اضغط «إضافة فولدر»\nواختر ما تريد مراقبته، مثل التنزيلات أو واتساب.</string>
     <string name="setup_title">خطوات مطلوبة ليعمل التطبيق</string>
     <string name="channel_alerts">تنبيهات الزيادة السريعة</string>
     <string name="channel_service">الفحص الجاري</string>

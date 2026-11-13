@@ -9,7 +9,9 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.os.Environment
 import android.os.PowerManager
+import android.os.StatFs
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import java.io.File
@@ -35,24 +37,55 @@ object Checker {
     }
 
     private fun runNow(ctx: Context) {
-        val folders = Store.folders(ctx)
+        val targets = Store.targets(ctx)
         val rules = Store.rules(ctx)
         val history = Store.loadHistory(ctx)
-        history.keys.retainAll(folders.toSet())
-        for (path in folders) {
-            if (path !in Store.folders(ctx)) continue // removed while we were scanning
-            val h = history.getOrPut(path) { FolderHistory(path) }
-            val result = Scanner.scan(File(path))
+        history.keys.retainAll(targets.toSet())
+        for (key in targets) {
+            if (key !in Store.targets(ctx)) continue // removed while we were scanning
+            val h = history.getOrPut(key) { FolderHistory(key) }
+            val started = System.currentTimeMillis()
+            // Files changed since the previous check are the candidates for "what caused it".
+            val since = minOf(h.lastCheck ?: (started - rules.windowMs), started - rules.windowMs)
+            val isPhone = key == Alert.PHONE
+            val result = Scanner.scan(if (isPhone) PhoneStorage.root else File(key), since)
             val now = System.currentTimeMillis()
             if (result.error != null) { h.error = result.error; continue }
             h.error = ""
-            h.add(Sample(now, result.total, result.children), rules.windowMs)
-            Growth.check(h, rules, now)?.let { Notifications.alert(ctx, it) }
+            // The phone is measured by used storage (includes app data we can't read).
+            val size = if (isPhone) PhoneStorage.used() else result.total
+            h.add(Sample(now, size, result.children), rules.windowMs)
+
+            val previous = Store.loadSnapshot(ctx, key)
+            Growth.check(h, rules, now)?.let { basic ->
+                val folders = if (previous != null) Culprits.folders(previous, result.dirs, basic.growth) else emptyList()
+                var unexplained = 0L
+                if (isPhone && previous != null) {
+                    val inFiles = result.total - (previous[""] ?: result.total)
+                    val rest = basic.growth - maxOf(inFiles, 0L)
+                    if (rest >= maxOf(basic.growth * 3 / 10, 100 * Growth.MB)) unexplained = rest
+                }
+                val alert = basic.copy(folders = folders, files = result.recent, unexplained = unexplained)
+                h.lastAlertText = alert.text()
+                Notifications.alert(ctx, alert)
+            }
+            Store.saveSnapshot(ctx, key, result.dirs)
         }
-        history.keys.retainAll(Store.folders(ctx).toSet())
+        val keep = Store.targets(ctx)
+        history.keys.retainAll(keep.toSet())
+        Store.pruneSnapshots(ctx, keep)
         Store.saveHistory(ctx, history)
         Store.setLastRun(ctx, System.currentTimeMillis())
     }
+}
+
+/** The phone's shared storage ("الذاكرة الداخلية"). */
+object PhoneStorage {
+    val root: File get() = Environment.getExternalStorageDirectory()
+
+    private fun stat() = StatFs(root.path)
+    fun used(): Long = stat().let { it.totalBytes - it.availableBytes }
+    fun total(): Long = stat().totalBytes
 }
 
 /** Wakes the phone at the next check time (daily at the chosen hour, or every N minutes). */
