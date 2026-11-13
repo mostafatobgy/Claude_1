@@ -175,7 +175,7 @@ class MainActivity : AppCompatActivity() {
             if (!hasStorage()) {
                 Toast.makeText(this, "اسمح أولًا بقراءة الملفات", Toast.LENGTH_LONG).show()
                 requestStorage()
-            } else if (Store.folders(this).isEmpty()) {
+            } else if (Store.targets(this).isEmpty()) {
                 Toast.makeText(this, "أضف فولدرًا واحدًا على الأقل", Toast.LENGTH_SHORT).show()
             } else {
                 startMonitoring()
@@ -215,12 +215,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun confirmRemove(path: String) {
+        val isPhone = path == Alert.PHONE
         AlertDialog.Builder(this)
-            .setMessage("إيقاف مراقبة «${File(path).name}»؟")
-            .setPositiveButton("حذف") { _, _ ->
-                val rest = Store.folders(this) - path
-                Store.setFolders(this, rest)
-                if (rest.isEmpty()) { Store.setEnabled(this, false); Scheduler.cancel(this) }
+            .setMessage(if (isPhone) "إيقاف فحص الهاتف كله؟\n(يمكن تشغيله مرة أخرى من الإعدادات)" else "إيقاف مراقبة «${File(path).name}»؟")
+            .setPositiveButton(if (isPhone) "إيقاف" else "حذف") { _, _ ->
+                if (isPhone) Store.setPhoneEnabled(this, false) else Store.setFolders(this, Store.folders(this) - path)
+                if (Store.targets(this).isEmpty()) { Store.setEnabled(this, false); Scheduler.cancel(this) }
                 refresh()
             }
             .setNegativeButton("إلغاء", null)
@@ -228,7 +228,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkNow() {
-        if (Store.folders(this).isEmpty()) return
+        if (Store.targets(this).isEmpty()) return
         if (Checker.isBusy) {
             Toast.makeText(this, "الفحص جارٍ بالفعل…", Toast.LENGTH_SHORT).show()
             return
@@ -301,9 +301,18 @@ class MainActivity : AppCompatActivity() {
         toggle.check(if (r.daily) dailyBtn.id else intervalBtn.id)
         showMode(r.daily)
 
-        label("متى أنبّهك؟ (لكل فولدر، مقارنةً بحجمه في الفحص السابق)")
-        val pct = field("عند زيادة ≥ نسبة % (0 = معطّل)", r.thresholdPercent)
-        val mb = field("أو عند زيادة ≥ ميجابايت (0 = معطّل)", r.thresholdMb)
+        label("📱 الهاتف كله: نبّهني إذا زادت المساحة المستخدمة عن الفحص السابق بمقدار")
+        val phoneSwitch = MaterialSwitch(this).apply {
+            text = "فحص الهاتف كله"
+            isChecked = Store.phoneEnabled(this@MainActivity)
+        }
+        fields.addView(phoneSwitch, params(4))
+        val phoneMb = field("≥ ميجابايت (0 = معطّل)  •  1024 = 1 GB", r.phoneMb)
+        val phonePct = field("أو ≥ نسبة % (0 = معطّل)", r.phonePercent)
+
+        label("📁 الفولدرات المضافة: نبّهني إذا زاد حجم أي فولدر عن الفحص السابق بمقدار")
+        val pct = field("≥ نسبة % (0 = معطّل)", r.thresholdPercent)
+        val mb = field("أو ≥ ميجابايت (0 = معطّل)", r.thresholdMb)
 
         val dialog = AlertDialog.Builder(this)
             .setTitle(R.string.settings)
@@ -323,10 +332,13 @@ class MainActivity : AppCompatActivity() {
                 thresholdMb = num(mb) ?: -1,
                 thresholdPercent = (num(pct) ?: -1).toInt(),
                 cooldownMin = (num(cooldown) ?: -1).toInt(),
+                phoneMb = num(phoneMb) ?: -1,
+                phonePercent = (num(phonePct) ?: -1).toInt(),
             )
             val error = when {
-                n.thresholdMb < 0 || n.thresholdPercent < 0 -> "أدخل أرقامًا صحيحة"
-                n.thresholdMb == 0L && n.thresholdPercent == 0 -> "حدّد النسبة أو الميجابايت"
+                n.thresholdMb < 0 || n.thresholdPercent < 0 || n.phoneMb < 0 || n.phonePercent < 0 -> "أدخل أرقامًا صحيحة"
+                n.thresholdMb == 0L && n.thresholdPercent == 0 -> "حدّد النسبة أو الميجابايت للفولدرات"
+                phoneSwitch.isChecked && n.phoneMb == 0L && n.phonePercent == 0 -> "حدّد مقدار الزيادة للهاتف كله"
                 daily -> null
                 n.intervalMin < 1 -> "الفحص يجب أن يكون كل دقيقة على الأقل"
                 n.windowMin < n.intervalMin -> "مدة المقارنة يجب أن تكون أطول من أو تساوي مدة الفحص"
@@ -341,7 +353,11 @@ class MainActivity : AppCompatActivity() {
             val saved = if (daily && (n.intervalMin < 1 || n.windowMin < n.intervalMin || n.cooldownMin < 0))
                 n.copy(intervalMin = r.intervalMin, windowMin = r.windowMin, cooldownMin = r.cooldownMin) else n
             Store.setRules(this, saved)
+            val phoneTurnedOn = phoneSwitch.isChecked && !Store.phoneEnabled(this)
+            Store.setPhoneEnabled(this, phoneSwitch.isChecked)
+            if (Store.targets(this).isEmpty()) { Store.setEnabled(this, false); Scheduler.cancel(this) }
             if (Store.isEnabled(this)) Scheduler.scheduleNext(this)
+            if (phoneTurnedOn && Store.isEnabled(this)) Checker.runAsync(this) // starting size
             dialog.dismiss()
             refresh()
         }
@@ -386,13 +402,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refresh() {
-        val folders = Store.folders(this)
+        val targets = Store.targets(this)
         val history = Store.loadHistory(this)
         val rules = Store.rules(this)
         val enabled = Store.isEnabled(this)
 
-        adapter.submit(folders.map { it to history[it] }, rules)
-        empty.visibility = if (folders.isEmpty()) View.VISIBLE else View.GONE
+        adapter.submit(targets.map { it to history[it] }, rules)
+        empty.visibility = if (targets.isEmpty()) View.VISIBLE else View.GONE
 
         settingSwitch = true
         enabledSwitch.isChecked = enabled
@@ -406,14 +422,19 @@ class MainActivity : AppCompatActivity() {
             enabled -> "● المراقبة تعمل"
             else -> "○ المراقبة متوقفة"
         }
-        val parts = mutableListOf<String>()
-        if (rules.thresholdPercent > 0) parts += "${rules.thresholdPercent}%"
-        if (rules.thresholdMb > 0) parts += "${rules.thresholdMb} MB"
+        fun limits(mb: Long, pct: Int) = listOfNotNull(
+            if (pct > 0) "$pct%" else null,
+            if (mb > 0) (if (mb >= 1024 && mb % 1024 == 0L) "${mb / 1024} GB" else "$mb MB") else null,
+        ).joinToString(" أو ")
         val schedule = if (rules.daily) "فحص يومي الساعة ${formatClock(rules.dailyHour, rules.dailyMinute)}"
         else "فحص كل ${rules.intervalMin} دقيقة"
-        val compare = if (rules.daily) "عن حجم أمس" else "خلال ${rules.windowMin} دقيقة"
+        val compare = if (rules.daily) "عن أمس" else "خلال ${rules.windowMin} دقيقة"
+        val alerts = listOfNotNull(
+            if (Store.phoneEnabled(this)) "الهاتف ≥ ${limits(rules.phoneMb, rules.phonePercent)}" else null,
+            if (Store.folders(this).isNotEmpty()) "الفولدرات ≥ ${limits(rules.thresholdMb, rules.thresholdPercent)}" else null,
+        )
         val lastText = if (last > 0) "\nآخر فحص: " + whenText(last) else ""
-        rulesText.text = "$schedule • تنبيه عند زيادة ≥ ${parts.joinToString(" أو ")} $compare$lastText"
+        rulesText.text = "$schedule\nتنبيه عند زيادة " + alerts.joinToString(" • ") + " $compare$lastText"
         buildSetup()
     }
 }

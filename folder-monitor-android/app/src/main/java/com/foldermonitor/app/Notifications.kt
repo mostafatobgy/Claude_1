@@ -36,10 +36,14 @@ object Notifications {
 
     fun checking(ctx: Context): Notification {
         ensureChannels(ctx)
-        val count = Store.folders(ctx).size
+        val title = when {
+            Store.phoneEnabled(ctx) && Store.folders(ctx).isEmpty() -> "جاري فحص الهاتف…"
+            Store.phoneEnabled(ctx) -> "جاري فحص الهاتف و${Store.folders(ctx).size} فولدر…"
+            else -> "جاري فحص ${Store.folders(ctx).size} فولدر…"
+        }
         return NotificationCompat.Builder(ctx, CH_SERVICE)
             .setSmallIcon(R.drawable.ic_stat)
-            .setContentTitle("جاري فحص $count فولدر…")
+            .setContentTitle(title)
             .setContentIntent(openApp(ctx))
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_MIN)
