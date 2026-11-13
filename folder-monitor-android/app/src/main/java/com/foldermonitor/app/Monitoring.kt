@@ -3,6 +3,7 @@ package com.foldermonitor.app
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.app.Service
+import android.app.usage.StorageStatsManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -12,6 +13,7 @@ import android.os.IBinder
 import android.os.Environment
 import android.os.PowerManager
 import android.os.StatFs
+import android.os.storage.StorageManager
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import java.io.File
@@ -40,6 +42,11 @@ object Checker {
         val targets = Store.targets(ctx)
         val rules = Store.rules(ctx)
         val history = Store.loadHistory(ctx)
+        // v3 measures the phone like Settings does (system included); older phone sizes aren't comparable.
+        if (Store.phoneMeasureVersion(ctx) < 3) {
+            history.remove(Alert.PHONE)
+            Store.setPhoneMeasureVersion(ctx, 3)
+        }
         history.keys.retainAll(targets.toSet())
         for (key in targets) {
             if (key !in Store.targets(ctx)) continue // removed while we were scanning
@@ -53,7 +60,7 @@ object Checker {
             if (result.error != null) { h.error = result.error; continue }
             h.error = ""
             // The phone is measured by used storage (includes app data we can't read).
-            val size = if (isPhone) PhoneStorage.used() else result.total
+            val size = if (isPhone) PhoneStorage.used(ctx) else result.total
             h.add(Sample(now, size, result.children), rules.windowMs)
 
             val previous = Store.loadSnapshot(ctx, key)
@@ -79,13 +86,26 @@ object Checker {
     }
 }
 
-/** The phone's shared storage ("الذاكرة الداخلية"). */
+/**
+ * The phone's storage, measured the way Android's Settings does: total is the advertised size
+ * (e.g. 256 GB) and "used" includes the Android system itself. Files are read from [root].
+ */
 object PhoneStorage {
     val root: File get() = Environment.getExternalStorageDirectory()
 
-    private fun stat() = StatFs(root.path)
-    fun used(): Long = stat().let { it.totalBytes - it.availableBytes }
-    fun total(): Long = stat().totalBytes
+    private fun stats(ctx: Context): Pair<Long, Long> {
+        try {
+            val ssm = ctx.getSystemService(StorageStatsManager::class.java)
+            val total = ssm.getTotalBytes(StorageManager.UUID_DEFAULT)
+            val free = ssm.getFreeBytes(StorageManager.UUID_DEFAULT)
+            if (total > 0) return total to free
+        } catch (e: Exception) { }
+        val st = StatFs(root.path) // fallback: user-data partition only
+        return st.totalBytes to st.availableBytes
+    }
+
+    fun used(ctx: Context): Long = stats(ctx).let { (total, free) -> total - free }
+    fun total(ctx: Context): Long = stats(ctx).first
 }
 
 /** Wakes the phone at the next check time (daily at the chosen hour, or every N minutes). */

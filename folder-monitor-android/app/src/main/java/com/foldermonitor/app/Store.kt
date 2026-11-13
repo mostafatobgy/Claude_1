@@ -64,6 +64,9 @@ object Store {
     fun targets(ctx: Context): List<String> =
         (if (phoneEnabled(ctx)) listOf(Alert.PHONE) else emptyList()) + folders(ctx)
 
+    fun phoneMeasureVersion(ctx: Context) = prefs(ctx).getInt("phoneMeasure", 1)
+    fun setPhoneMeasureVersion(ctx: Context, v: Int) = prefs(ctx).edit().putInt("phoneMeasure", v).apply()
+
     fun isEnabled(ctx: Context) = prefs(ctx).getBoolean("enabled", false)
     fun setEnabled(ctx: Context, on: Boolean) = prefs(ctx).edit().putBoolean("enabled", on).apply()
 

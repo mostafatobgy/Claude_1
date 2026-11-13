@@ -307,7 +307,7 @@ class MainActivity : AppCompatActivity() {
             isChecked = Store.phoneEnabled(this@MainActivity)
         }
         fields.addView(phoneSwitch, params(4))
-        val phoneMb = field("≥ ميجابايت (0 = معطّل)  •  1024 = 1 GB", r.phoneMb)
+        val phoneMb = field("≥ ميجابايت (0 = معطّل)  •  1000 = 1 GB", r.phoneMb)
         val phonePct = field("أو ≥ نسبة % (0 = معطّل)", r.phonePercent)
 
         label("📁 الفولدرات المضافة: نبّهني إذا زاد حجم أي فولدر عن الفحص السابق بمقدار")
@@ -424,7 +424,7 @@ class MainActivity : AppCompatActivity() {
         }
         fun limits(mb: Long, pct: Int) = listOfNotNull(
             if (pct > 0) "$pct%" else null,
-            if (mb > 0) (if (mb >= 1024 && mb % 1024 == 0L) "${mb / 1024} GB" else "$mb MB") else null,
+            if (mb > 0) (if (mb >= 1000 && mb % 1000 == 0L) "${mb / 1000} GB" else "$mb MB") else null,
         ).joinToString(" أو ")
         val schedule = if (rules.daily) "فحص يومي الساعة ${formatClock(rules.dailyHour, rules.dailyMinute)}"
         else "فحص كل ${rules.intervalMin} دقيقة"

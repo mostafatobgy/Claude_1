@@ -29,7 +29,7 @@ object Scanner {
     /** Children kept per sample (largest first) so the saved history stays small. */
     private const val MAX_CHILDREN = 300
     /** Smaller folders are left out of the snapshot (their growth can't matter). */
-    const val MIN_DIR = 1024L * 1024L
+    const val MIN_DIR = 1_000_000L
     private const val MAX_RECENT = 10
 
     fun scan(root: File, since: Long = Long.MAX_VALUE): Result {

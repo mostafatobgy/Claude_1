@@ -96,6 +96,9 @@ class GrowthTest {
         assertEquals("512 B", formatSize(512))
         assertEquals("1.5 KB", formatSize(1536))
         assertEquals("-3.0 MB", formatSize(-3 * mb))
+        // Same units as Android's Settings: 94.2 GB used of 256 GB.
+        assertEquals("94.2 GB", formatSize(94_200_000_000L))
+        assertEquals("256.0 GB", formatSize(256_000_000_000L))
         assertEquals("45 ثانية", formatSpan(45_000))
         assertEquals("12 دقيقة", formatSpan(12 * min))
     }
