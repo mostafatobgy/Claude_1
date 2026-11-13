@@ -17,7 +17,7 @@ data class Rules(
     val thresholdMb: Long = 0,       // alert if growth >= this many MB (0 = off) ...
     val thresholdPercent: Int = 20,  // ... or >= this percent of the earlier size (0 = off)
     val cooldownMin: Int = 30,       // interval mode: don't repeat an alert for the same folder sooner
-    val phoneMb: Long = 1024,        // whole phone: alert if used space grew >= this many MB (0 = off) ...
+    val phoneMb: Long = 1000,        // whole phone: alert if used space grew >= this many MB (0 = off) ...
     val phonePercent: Int = 0,       // ... or >= this percent (0 = off)
 ) {
     // Daily mode compares with the previous day's check. 20 h (not 24) so a check that ran a little
@@ -160,7 +160,8 @@ object Culprits {
 }
 
 object Growth {
-    const val MB = 1024L * 1024L
+    /** Sizes use 1000-based units, like Android's Settings and Files apps. */
+    const val MB = 1_000_000L
 
     /** Returns an alert if [h] grew past the thresholds within the window (and not in cooldown). */
     fun check(h: FolderHistory, rules: Rules, now: Long): Alert? {
@@ -194,7 +195,7 @@ fun formatSize(bytes: Long): String {
     var n = kotlin.math.abs(bytes).toDouble()
     val units = listOf("B", "KB", "MB", "GB", "TB")
     var i = 0
-    while (n >= 1024 && i < units.lastIndex) { n /= 1024; i++ }
+    while (n >= 1000 && i < units.lastIndex) { n /= 1000; i++ }
     return if (i == 0) "$sign${n.toLong()} B" else sign + String.format(Locale.US, "%.1f %s", n, units[i])
 }
 

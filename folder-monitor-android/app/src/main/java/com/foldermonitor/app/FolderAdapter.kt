@@ -45,7 +45,7 @@ class FolderAdapter(private val onRemove: (String) -> Unit) : RecyclerView.Adapt
         val now = System.currentTimeMillis()
         if (path == Alert.PHONE) {
             vh.name.text = "📱 الهاتف كله"
-            vh.path.text = "المساحة المستخدمة من " + formatSize(PhoneStorage.total())
+            vh.path.text = "المساحة المستخدمة من " + formatSize(PhoneStorage.total(ctx))
         } else {
             vh.name.text = File(path).name.ifEmpty { path }
             vh.path.text = FolderPicker.displayPath(path)
