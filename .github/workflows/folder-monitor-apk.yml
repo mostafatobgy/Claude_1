@@ -1,0 +1,43 @@
+name: Build Folder Monitor APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "folder-monitor-android/**"
+      - ".github/workflows/folder-monitor-apk.yml"
+
+permissions:
+  contents: write   # to publish the APK as a release download
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: folder-monitor-android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Test and build
+        run: |
+          chmod +x gradlew
+          ./gradlew testDebugUnitTest assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk folder-monitor.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: folder-monitor-apk
+          path: folder-monitor-android/folder-monitor.apk
+      - name: Publish at a fixed download link
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view folders >/dev/null 2>&1 || \
+            gh release create folders --title "مراقب الفولدرات" --notes "أحدث نسخة من تطبيق مراقب الفولدرات. التحميل: folder-monitor.apk"
+          gh release upload folders folder-monitor.apk --clobber
+          gh release edit folders --notes "أحدث نسخة من تطبيق مراقب الفولدرات (رقم ${{ github.run_number }}). التحميل: folder-monitor.apk"

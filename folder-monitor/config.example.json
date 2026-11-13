@@ -1,0 +1,13 @@
+{
+  "folders": [
+    "C:\\Users\\YourName\\Downloads",
+    "D:\\Backups"
+  ],
+  "interval_seconds": 60,
+  "window_minutes": 10,
+  "threshold_mb": 500,
+  "threshold_percent": 0,
+  "cooldown_minutes": 15,
+  "desktop_notifications": true,
+  "ntfy_topic": ""
+}
