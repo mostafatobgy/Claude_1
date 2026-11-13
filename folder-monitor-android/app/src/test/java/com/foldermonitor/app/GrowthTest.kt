@@ -99,6 +99,11 @@ class GrowthTest {
         // Same units as Android's Settings: 94.2 GB used of 256 GB.
         assertEquals("94.2 GB", formatSize(94_200_000_000L))
         assertEquals("256.0 GB", formatSize(256_000_000_000L))
+        // This phone: data partition 234.3 GB → advertised 256 GB; used = 256 − 161.7 free = 94.3 GB
+        assertEquals(256_000_000_000L, advertisedSize(234_300_000_000L))
+        assertEquals("94.3 GB", formatSize(advertisedSize(234_300_000_000L) - 161_700_000_000L))
+        assertEquals(128_000_000_000L, advertisedSize(110_000_000_000L))
+        assertEquals(512_000_000_000L, advertisedSize(480_000_000_000L))
         assertEquals("45 ثانية", formatSpan(45_000))
         assertEquals("12 دقيقة", formatSpan(12 * min))
     }

@@ -38,7 +38,7 @@ object Store {
             thresholdMb = p.getLong("mb", d.thresholdMb),
             thresholdPercent = p.getInt("pct", d.thresholdPercent),
             cooldownMin = p.getInt("cooldown", d.cooldownMin),
-            phoneMb = p.getLong("phoneMb", d.phoneMb),
+            phoneMb = p.getLong("phoneMb", d.phoneMb).let { if (it == 1024L) 1000L else it }, // old default
             phonePercent = p.getInt("phonePct", d.phonePercent),
         )
     }
