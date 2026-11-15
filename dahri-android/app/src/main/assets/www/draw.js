@@ -144,8 +144,8 @@ function herniaGeom(s) {
 }
 
 /* Draw into (or redraw) a <g>. s = {theta, bulge, prot, len, head, tear, free}. Returns which nerves are pressed. */
-function drawAxial(g, s, showLabels) {
-  while (g.firstChild) g.removeChild(g.firstChild);
+/* Which nerves the disc material reaches, for shape s. Shared by the 2D and 3D views. */
+function herniaHits(s) {
   var G = herniaGeom(s);
 
   // which structures does the disc material reach?
@@ -172,6 +172,13 @@ function drawAxial(g, s, showLabels) {
   }
   var hitExit = [hitPath(ROOT_EXIT_R), hitPath(ROOT_EXIT_L)];
   var hitSac = reach(160, 174, 4) || (s.theta > 1.4 && s.theta < 1.75 && G.headR > 5 && G.headC.y + G.headR > 176);
+
+  return { trav: hitTrav, exit: hitExit, sac: hitSac, G: G };
+}
+
+function drawAxial(g, s, showLabels) {
+  while (g.firstChild) g.removeChild(g.firstChild);
+  var H = herniaHits(s), G = H.G, hitTrav = H.trav, hitExit = H.exit, hitSac = H.sac;
 
   // bony ring behind the disc (pedicles, laminae, spinous process)
   el("path", { d: "M104,150 C100,178 112,196 126,214 L160,236 L194,214 C208,196 220,178 216,150", fill: "none",
@@ -325,6 +332,7 @@ function drawSurgery(kind) {
 
 /* Tiny icons for the home tiles. */
 var ICONS = {
+  cube: '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 2.8l8 4.6v9.2l-8 4.6-8-4.6V7.4z"/><path d="M4 7.4l8 4.6 8-4.6M12 12v9.2"/></svg>',
   spine: '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="8" y="2.5" width="8" height="3.5" rx="1.5"/><rect x="7.5" y="8" width="9" height="3.5" rx="1.5"/><rect x="7" y="13.5" width="10" height="3.5" rx="1.5"/><path d="M9 19.5h6l-3 2.5z"/></svg>',
   disc: '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="11" rx="9" ry="6"/><ellipse cx="12" cy="11" rx="4" ry="2.4"/><path d="M8 19h8" stroke-linecap="round"/></svg>',
   stages: '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="5" cy="12" r="2.5"/><circle cx="12" cy="12" r="2.5"/><path d="M14.5 12h1.5"/><circle cx="19.5" cy="12" r="2.5"/></svg>',

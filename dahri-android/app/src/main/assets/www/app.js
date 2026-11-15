@@ -37,6 +37,18 @@ function isolateCodes(rootEl) {
   });
 }
 
+/* 3D model (when the phone supports it) above the simple 2D cross-section; both follow the same shape. */
+function discViews(box, labels) {
+  var m = model3D(), a = axialWidget(labels);
+  if (m) {
+    box.appendChild(m.el);
+    box.appendChild(h(LEGEND_3D));
+    box.appendChild(h('<p class="caption" style="margin-top:10px">مقطع مبسط من أعلى:</p>'));
+  }
+  box.appendChild(a.svg);
+  return { go: function (p) { if (m) m.go(p); a.go(p); } };
+}
+
 /* ---------- bottom sheet ---------- */
 var sheet = document.getElementById("sheet"), backdrop = document.getElementById("sheetBackdrop");
 function openSheet(html) {
@@ -58,6 +70,7 @@ var PAGES = {};
 
 PAGES[""] = { title: "ظهري", render: function () {
   var tiles = [
+    ["model", "مجسم ثلاثي الأبعاد", "قلّب الفقرات والقرص بإصبعك من كل الجهات", "#E8F3FC", "#07543F"],
     ["spine", "العمود الفقري", "المس أي فقرة لتعرف اسمها وأعصابها", "#E8F3FC", "#2F6FA8"],
     ["disc", "تركيب القرص", "النواة والحلقة الليفية وجذور الأعصاب", "#FFF4E0", "#8A5200"],
     ["stages", "درجات الانزلاق", "من الانتفاخ إلى الانفصال، بالحركة", "#FCE7EF", "#C2185B"],
@@ -70,7 +83,7 @@ PAGES[""] = { title: "ظهري", render: function () {
   var html = '<div><div class="hero"><h2>افهم حالتك</h2><p>شرح مبسط بالرسوم للعمود الفقري والانزلاق الغضروفي وطرق علاجه.</p></div>' +
     EMERGENCY_LINK + '<div class="grid">' +
     tiles.map(function (t) {
-      var icon = { spine: "spine", disc: "disc", stages: "stages", direction: "direction", mine: "mine", treatment: "treat", videos: "video", sources: "book" }[t[0]];
+      var icon = { model: "cube", spine: "spine", disc: "disc", stages: "stages", direction: "direction", mine: "mine", treatment: "treat", videos: "video", sources: "book" }[t[0]];
       return '<a class="tile" href="#/' + t[0] + '"><span class="ico" style="background:' + t[3] + ';color:' + t[4] + '">' + ICONS[icon] + '</span><strong>' + t[1] + '</strong><span>' + t[2] + '</span></a>';
     }).join("") +
     '</div><h2>قريباً في التطبيق</h2><div class="grid">' +
@@ -78,6 +91,27 @@ PAGES[""] = { title: "ظهري", render: function () {
       return '<div class="tile soon"><strong>' + s + '</strong><span>في النسخة القادمة</span></div>';
     }).join("") + '</div>' + DISCLAIMER + '</div>';
   return h(html);
+} };
+
+PAGES.model = { title: "مجسم ثلاثي الأبعاد", render: function () {
+  var root = h('<div><p>مجسم لفقرتين من أسفل الظهر وبينهما القرص، وخلفه الكيس العصبي وجذور الأعصاب. اختر درجة الانزلاق واتجاهه وشاهد التغيير من أي زاوية.</p>' +
+    '<div class="figure" id="ax"></div>' +
+    '<h3>درجة الانزلاق</h3><div class="chips" id="st"></div><h3>الاتجاه</h3><div class="chips" id="dr"></div>' +
+    '<div class="card" id="txt"></div>' + DISCLAIMER + '</div>');
+  var w = discViews(root.querySelector("#ax"), false), si = 3, di = 1;
+  var stBox = root.querySelector("#st"), drBox = root.querySelector("#dr"), txt = root.querySelector("#txt");
+  function apply() {
+    [].forEach.call(stBox.children, function (c, j) { c.setAttribute("aria-pressed", j === si); });
+    [].forEach.call(drBox.children, function (c, j) { c.setAttribute("aria-pressed", j === di); });
+    var st = STAGES[si], d = DIRECTIONS[di];
+    txt.innerHTML = '<h3>' + st.name + ' — ' + d.name + '</h3><p>' + st.what + '</p><p>' + d.hits + '</p>';
+    isolateCodes(txt);
+    w.go(Object.assign({ theta: d.theta }, st.p));
+  }
+  STAGES.forEach(function (st, i) { var b = h('<button class="chip">' + st.name + '</button>'); b.onclick = function () { si = i; apply(); }; stBox.appendChild(b); });
+  DIRECTIONS.forEach(function (d, i) { var b = h('<button class="chip">' + d.name + '</button>'); b.onclick = function () { di = i; apply(); }; drBox.appendChild(b); });
+  apply();
+  return root;
 } };
 
 PAGES.spine = { title: "العمود الفقري", render: function () {
@@ -148,7 +182,7 @@ PAGES.stages = { title: "درجات الانزلاق", render: function () {
     '<div class="note good">' + REGRESSION_NOTE + '</div>' +
     '<div class="note">درجة الانزلاق في الرنين لا تساوي شدة الألم. كثيرون عندهم انتفاخ أو بروز بلا أي أعراض، وقرار العلاج يُبنى على الأعراض والفحص مع الصورة.</div>' +
     DISCLAIMER + '</div>');
-  var w = axialWidget(false); root.querySelector("#ax").appendChild(w.svg);
+  var w = discViews(root.querySelector("#ax"), false);
   var chips = root.querySelector("#chips"), txtBox = root.querySelector("#txt"), timer = null;
   function select(i, fromPlay) {
     if (!fromPlay && timer) { clearTimeout(timer); timer = null; }
@@ -174,7 +208,7 @@ PAGES.direction = { title: "اتجاه الانزلاق", render: function () {
     '<div class="chips" id="chips"></div><div class="figure" id="ax"></div>' +
     '<p class="caption">الأصفر: جذور الأعصاب. يتحول العصب إلى الأحمر عندما يضغط عليه الانزلاق.</p>' +
     '<div class="card" id="txt"></div>' + DISCLAIMER + '</div>');
-  var w = axialWidget(true); root.querySelector("#ax").appendChild(w.svg);
+  var w = discViews(root.querySelector("#ax"), true);
   var chips = root.querySelector("#chips"), box = root.querySelector("#txt");
   function select(i) {
     var d = DIRECTIONS[i];
@@ -213,7 +247,7 @@ PAGES.mine = { title: "حالتي أنا", render: function (q) {
     '</div><div class="card" id="res"></div>' +
     '<div class="figure" id="ax"></div>' +
     '<div class="figure" id="sp"></div>' + DISCLAIMER + '</div>');
-  var w = axialWidget(true); root.querySelector("#ax").appendChild(w.svg);
+  var w = discViews(root.querySelector("#ax"), true);
   var lv = root.querySelector("#lv"), st = root.querySelector("#st"), dr = root.querySelector("#dr");
   function update() {
     var s = { level: lv.value, stage: st.value, dir: dr.value };
@@ -266,16 +300,28 @@ PAGES.treatment = { title: "طرق العلاج", render: function () {
 
 PAGES.videos = { title: "فيديوهات", render: function () {
   var mine = store("dahri.videos") || [];
-  var root = h('<div><div class="note">الفيديوهات تحتاج إنترنت، وتفتح في يوتيوب. كل بطاقة تبحث عن الموضوع، فاختر مقاطع من أطباء أو مستشفيات أو جهات صحية معروفة.</div>' +
+  var root = h('<div><div class="note">الفيديوهات تحتاج إنترنت وتفتح في تطبيق يوتيوب. اخترتها من أطباء عرب ومن شركات رسوم طبية ثلاثية الأبعاد. المقاطع الإنجليزية رسومها واضحة حتى دون فهم الكلام، ويمكن تشغيل الترجمة العربية التلقائية من إعدادات يوتيوب.</div>' +
     '<div id="list"></div><h2>فيديوهات حفظتها</h2><p class="muted">احفظ هنا فيديو أرسله لك طبيبك أو أخصائيك لتجده بسهولة.</p><div id="mine"></div>' +
     '<div class="card"><label class="field">عنوان الفيديو<input type="text" id="vt" placeholder="مثال: تمارين من أخصائي العلاج الطبيعي"></label>' +
     '<label class="field">الرابط<input type="url" id="vu" placeholder="https://youtube.com/..." dir="ltr"></label>' +
     '<p class="muted" id="verr" hidden style="color:#C62828">الرابط يجب أن يبدأ بـ https://</p>' +
     '<button class="btn" id="add">حفظ الفيديو</button></div>' +
     '<div class="note warn">لا يطبق صديقك تمارين من فيديو إلا بعد موافقة أخصائيه، لأن الحالة متقدمة.</div>' + DISCLAIMER + '</div>');
-  root.querySelector("#list").innerHTML = VIDEOS.map(function (v) {
-    return '<a class="card video" href="https://www.youtube.com/results?search_query=' + encodeURIComponent(v.q) + '"><span class="play">' + ICONS.play + '</span><span class="vt"><b>' + v.t + '</b><small>' + v.d + '</small></span></a>';
-  }).join("");
+  var list = root.querySelector("#list");
+  VIDEO_GROUPS.forEach(function (g) {
+    list.appendChild(h('<h2>' + g.t + '</h2>'));
+    g.items.forEach(function (v) {
+      var url = v.short ? "https://www.youtube.com/shorts/" + v.id : "https://www.youtube.com/watch?v=" + v.id;
+      var card = h('<a class="card vcard" href="' + url + '"><span class="thumb"><img alt="" loading="lazy" src="https://i.ytimg.com/vi/' + v.id + '/mqdefault.jpg"><span class="pbtn">' + ICONS.play + '</span></span>' +
+        '<span class="vt"><b>' + v.t + '</b><small>' + v.by + (v.en ? ' · بالإنجليزية' : '') + '</small></span></a>');
+      var img = card.querySelector("img");
+      // A removed video only has YouTube's small grey placeholder (120px wide): hide its card.
+      img.onload = function () { if (img.naturalWidth <= 120) card.remove(); };
+      img.onerror = function () { card.querySelector(".thumb").classList.add("off"); };
+      list.appendChild(card);
+    });
+  });
+  list.appendChild(h('<a class="btn outline" style="margin-top:4px" href="https://www.youtube.com/results?search_query=' + encodeURIComponent("الانزلاق الغضروفي شرح") + '">ابحث عن المزيد في يوتيوب</a>'));
   var mineBox = root.querySelector("#mine");
   function drawMine() {
     mineBox.innerHTML = mine.length ? "" : '<p class="muted">لا يوجد شيء بعد.</p>';
