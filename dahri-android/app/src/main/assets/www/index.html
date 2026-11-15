@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ظهري</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <button class="back" id="back" aria-label="رجوع" hidden>
+    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+  <h1 id="title">ظهري</h1>
+</header>
+<main id="view"></main>
+<div class="sheet-backdrop" id="sheetBackdrop" hidden></div>
+<section class="sheet" id="sheet" aria-live="polite" hidden>
+  <div class="sheet-handle"></div>
+  <button class="sheet-close" id="sheetClose" aria-label="إغلاق">✕</button>
+  <div id="sheetBody"></div>
+</section>
+<script src="data.js"></script>
+<script src="draw.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

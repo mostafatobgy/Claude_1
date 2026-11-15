@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A stack of five rounded vertebrae with discs between them, on the green background. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#FFFFFF" android:pathData="M42,30h24a4,4 0,0 1,4 4v2a4,4 0,0 1,-4 4h-24a4,4 0,0 1,-4 -4v-2a4,4 0,0 1,4 -4z"/>
+    <path android:fillColor="#FFFFFF" android:pathData="M41,44h26a4,4 0,0 1,4 4v2a4,4 0,0 1,-4 4h-26a4,4 0,0 1,-4 -4v-2a4,4 0,0 1,4 -4z"/>
+    <path android:fillColor="#FFFFFF" android:pathData="M40,58h28a4,4 0,0 1,4 4v2a4,4 0,0 1,-4 4h-28a4,4 0,0 1,-4 -4v-2a4,4 0,0 1,4 -4z"/>
+    <path android:fillColor="#FFFFFF" android:pathData="M41,72h26a4,4 0,0 1,4 4v2a4,4 0,0 1,-4 4h-26a4,4 0,0 1,-4 -4v-2a4,4 0,0 1,4 -4z"/>
+    <path android:fillColor="#A5D6A7" android:pathData="M44,40.5h20v3h-20z"/>
+    <path android:fillColor="#EC407A" android:pathData="M44,54.5h20v3h-20zM64,54.5c3,0 5,0.5 5,1.5s-2,1.5 -5,1.5z"/>
+    <path android:fillColor="#A5D6A7" android:pathData="M44,68.5h20v3h-20z"/>
+</vector>
