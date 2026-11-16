@@ -179,3 +179,20 @@ svg .hit { cursor: pointer; }
 .tile.wide .ico { grid-row: span 2; width: 56px; height: 56px; background: #fff !important; }
 .m3d-reset { position: absolute; top: 8px; inset-inline-start: 8px; width: 44px; height: 44px; border-radius: 50%;
   border: 1px solid #DCE5EC; background: rgba(255,255,255,.9); color: var(--primary-dark); font-size: 1.3rem; z-index: 2; }
+
+/* full-screen pictures */
+.figure { position: relative; }
+.fs-open { position: absolute; top: 8px; inset-inline-end: 8px; z-index: 3; width: 44px; height: 44px; border-radius: 50%;
+  border: 1px solid #DCE5EC; background: rgba(255,255,255,.92); color: var(--primary-dark); display: grid; place-items: center; box-shadow: var(--shadow); }
+.figure.fs { position: fixed; inset: 56px 0 0 0; z-index: 30; margin: 0; border-radius: 0; border: 0; padding: 8px;
+  overflow-y: auto; background: var(--surface); display: flex; flex-direction: column; justify-content: flex-start; justify-content: safe center; }
+.figure.fs > .fs-open { display: none; }
+.figure.fs > svg { max-height: calc(100vh - 80px); width: 100%; }
+.figure.fs .m3d { flex: none; height: calc(100vh - 72px); }
+.figure.fs .m3d canvas { position: absolute; inset: 0; }
+.figure.fs .m3d ~ * { flex: none; }
+.fs-bar { position: fixed; top: 0; inset-inline: 0; z-index: 31; height: 56px; display: flex; align-items: center; gap: 4px;
+  padding: 0 12px; background: var(--primary-dark); color: #fff; font-weight: 700; font-size: 1.1rem; }
+body.fs-on { overflow: hidden; }
+.sheet-backdrop { z-index: 39; }
+.sheet { z-index: 40; }

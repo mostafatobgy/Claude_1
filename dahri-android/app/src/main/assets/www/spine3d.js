@@ -225,13 +225,13 @@ function spineModel3D(opts) {
   attachOrbit(wrap, canvas, view, 22, 110, 1.2, function () { touched = true; hint.style.opacity = 0; });
 
   var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  var started = performance.now(), lastW = 0;
+  var started = performance.now(), lastW = 0, lastH = 0;
   function frame(ts) {
     if (!wrap.isConnected && performance.now() - started > 2000) { renderer.dispose(); return; }
     requestAnimationFrame(frame);
     if (!wrap.isConnected) return;
-    var w = wrap.clientWidth || 320, h = Math.round(w * 1.15);
-    if (w !== lastW) { renderer.setSize(w, h, false); canvas.style.width = w + "px"; canvas.style.height = h + "px"; camera.aspect = w / h; camera.updateProjectionMatrix(); lastW = w; }
+    var w = wrap.clientWidth || 320, h = wrap.closest(".fs") ? wrap.clientHeight || w : Math.round(w * 1.15);
+    if (w !== lastW || h !== lastH) { renderer.setSize(w, h, false); canvas.style.width = w + "px"; canvas.style.height = h + "px"; camera.aspect = w / h; camera.updateProjectionMatrix(); lastW = w; lastH = h; }
     if (!touched && !reduce) view.az += 0.004;
     if (pressed) { var g = 0.5 + 0.5 * Math.sin(ts / 220); pressed.color.setRGB(0.85 + 0.15 * g, 0.12, 0.12); pressed.emissive.setRGB(0.35 * g, 0, 0); }
     camera.position.set(target.x + view.r * Math.sin(view.az) * Math.cos(view.el), target.y + view.r * Math.sin(view.el), target.z + view.r * Math.cos(view.az) * Math.cos(view.el));

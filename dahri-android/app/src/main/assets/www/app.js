@@ -55,6 +55,35 @@ function lumbarLevel() {
   return m && LUMBAR_LEVELS.indexOf(m.level) >= 0 ? m.level : "L4-L5";
 }
 
+/* ---------- full-screen pictures ---------- */
+/* Every picture gets a button that opens it over the whole screen, with a back arrow (the phone's
+   back button also closes it). The picture itself moves into full screen, so it stays interactive. */
+var fsFig = null, fsBar = null;
+function enableFullscreen(fig) {
+  if (fig.querySelector(":scope > .fs-open")) return;
+  var b = h('<button class="fs-open" aria-label="عرض بملء الشاشة"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>');
+  b.onclick = function () { openFullscreen(fig); };
+  fig.insertBefore(b, fig.firstChild);
+}
+function openFullscreen(fig) {
+  if (fsFig) return;
+  fsFig = fig;
+  fig.classList.add("fs");
+  fsBar = h('<div class="fs-bar"><button class="back" aria-label="رجوع"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span>' + esc(titleEl.textContent) + '</span></div>');
+  fsBar.querySelector("button").onclick = function () { history.back(); };
+  document.body.appendChild(fsBar);
+  document.body.classList.add("fs-on");
+  history.pushState({ fs: 1 }, "", location.href);
+}
+function closeFullscreen() {
+  if (!fsFig) return;
+  fsFig.classList.remove("fs"); fsFig.scrollTop = 0;
+  fsBar.remove(); fsBar = null; fsFig = null;
+  document.body.classList.remove("fs-on");
+}
+// back from an info sheet opened inside full screen returns to the full-screen entry: stay there
+window.addEventListener("popstate", function () { if (fsFig && !(history.state && history.state.fs)) closeFullscreen(); });
+
 /* ---------- bottom sheet ---------- */
 var sheet = document.getElementById("sheet"), backdrop = document.getElementById("sheetBackdrop");
 function openSheet(html) {
@@ -299,7 +328,7 @@ PAGES.mine = { title: "حالتي أنا", render: function (q) {
     w.go(Object.assign({ theta: dir.theta }, p));
     if (LUMBAR_LEVELS.indexOf(s.level) >= 0 && full3) full3.setLevel(s.level);
     root.querySelector("#full").hidden = !(full3 && LUMBAR_LEVELS.indexOf(s.level) >= 0);
-    var sp = root.querySelector("#sp"); sp.innerHTML = "";
+    var sp = root.querySelector("#sp"); [].slice.call(sp.children).forEach(function (c) { if (!c.classList.contains("fs-open")) c.remove(); });
     sp.appendChild(drawSpine({ highlight: s.level, onPick: function (k, c) { if (k === "d") { lv.value = c; update(); window.scrollTo({ top: 0, behavior: "smooth" }); } } }));
   }
   [lv, st, dr].forEach(function (x) { x.onchange = update; });
@@ -392,7 +421,7 @@ PAGES.sources = { title: "المصادر", render: function () {
 
 /* ---------- router ---------- */
 function route() {
-  hideSheet();
+  hideSheet(); closeFullscreen();
   var hash = location.hash.replace(/^#\/?/, ""), qi = hash.indexOf("?");
   var name = qi >= 0 ? hash.slice(0, qi) : hash, q = {};
   if (qi >= 0) hash.slice(qi + 1).split("&").forEach(function (kv) { var p = kv.split("="); q[p[0]] = decodeURIComponent(p[1] || ""); });
@@ -402,6 +431,7 @@ function route() {
   view.innerHTML = "";
   view.appendChild(page.render(q));
   isolateCodes(view);
+  [].forEach.call(view.querySelectorAll(".figure"), enableFullscreen);
   window.scrollTo(0, 0);
 }
 backBtn.onclick = function () { if (history.length > 1) history.back(); else location.hash = ""; };

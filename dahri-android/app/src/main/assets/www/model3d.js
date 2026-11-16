@@ -190,9 +190,10 @@ function model3D(opts) {
   var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   function go(target2) { tween = { from: Object.assign({}, cur), to: target2, t0: null, dur: reduce ? 1 : 900 }; }
 
-  function size() {
-    var w = wrap.clientWidth || 320, h = Math.round(w * 0.8);
-    if (canvas.width !== Math.round(w * renderer.getPixelRatio())) { renderer.setSize(w, h, false); canvas.style.width = w + "px"; canvas.style.height = h + "px"; camera.aspect = w / h; camera.updateProjectionMatrix(); }
+  var lastW = 0, lastH = 0;
+  function size() {   // full screen: fill the box CSS gives us; otherwise keep a fixed shape
+    var w = wrap.clientWidth || 320, h = wrap.closest(".fs") ? wrap.clientHeight || w : Math.round(w * 0.8);
+    if (w !== lastW || h !== lastH) { renderer.setSize(w, h, false); canvas.style.width = w + "px"; canvas.style.height = h + "px"; camera.aspect = w / h; camera.updateProjectionMatrix(); lastW = w; lastH = h; }
   }
   var started = performance.now();
   function frame(ts) {
