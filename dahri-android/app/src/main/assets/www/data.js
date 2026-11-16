@@ -243,3 +243,20 @@ var SOURCES = [
   { t: "StatPearls (المكتبة الوطنية الأمريكية للطب) — الانزلاق الغضروفي", u: "https://www.ncbi.nlm.nih.gov/books/" },
   { t: "مايو كلينك — الانزلاق الغضروفي", u: "https://www.mayoclinic.org/ar" }
 ];
+
+/* «تقريري»: plain-Arabic explanations for the parts of an MRI report. The report itself is never stored in
+   the app's code; it arrives as a private code that is kept only on the phone (see PAGES.report). */
+var REPORT_GENERAL = {
+  lordosis: { t: "نقص التقوس الطبيعي لأسفل الظهر", en: "Reduced lumbar lordosis", d: "أسفل الظهر أكثر استقامة من المعتاد. كثيراً ما يكون سببه تشنج العضلات بسبب الألم، ويتحسن غالباً مع العلاج." },
+  canal_ok: { t: "القناة الشوكية بعرض طبيعي", en: "Normal dimensions of the spinal canal", d: "لا يوجد ضيق في القناة التي تمر فيها الأعصاب. هذه نتيجة مطمئنة.", good: 1 },
+  osteo: { t: "نتوءات عظمية صغيرة", en: "Small osteophytes", d: "زوائد عظمية صغيرة على حواف الفقرات، وهي علامة شائعة على الخشونة مع الوقت، وعادة لا تسبب أعراضاً بنفسها." },
+  degen: { t: "تآكل (جفاف) الأقراص", en: "Disc degeneration", d: "فقدت الأقراص جزءاً من الماء الذي بداخلها فصار لونها أغمق في الرنين. هذا ما يجعلها أكثر عرضة للانتفاخ والبروز." },
+  facet: { t: "خشونة المفاصل الصغيرة خلف الفقرات", en: "Multilevel facet arthropathy", d: "المفاصل الصغيرة بين الفقرات من الخلف فيها خشونة في أكثر من مستوى. قد تسبب ألماً في الظهر يزيد مع الوقوف الطويل أو الانحناء للخلف." },
+  conus_ok: { t: "نهاية الحبل الشوكي سليمة", en: "Normal conus medullaris", d: "نهاية الحبل الشوكي بحجم وإشارة طبيعيين. نتيجة مطمئنة.", good: 1 },
+  no_mass: { t: "لا توجد كتل أو تجمعات", en: "No para-spinal masses or collection", d: "لا أورام ولا التهابات أو تجمعات سوائل حول العمود الفقري. نتيجة مطمئنة.", good: 1 },
+  spondylosis: { t: "الخلاصة: خشونة في الفقرات القطنية مع إصابات في أكثر من قرص", en: "Lumbar spondylosis with multilevel disc lesions", d: "هذا رأي طبيب الأشعة الإجمالي: تغيرات تآكل (خشونة) مع انزلاقات في أكثر من مستوى، كما في التفاصيل أعلاه." }
+};
+var REPORT_OTHER = {
+  myoma: { t: "ورم ليفي صغير في الرحم", en: "Small uterine myoma", d: "اكتشاف عرضي ظهر في الصور، ولا علاقة له بالظهر أو بالانزلاق. هذه الأورام شائعة وغالباً حميدة، ويُعرض على طبيب النساء للمتابعة." }
+};
+var SIDE_AR = { L: "اليسار", R: "اليمين", B: "الجهتين", C: "المنتصف" };

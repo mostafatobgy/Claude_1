@@ -169,28 +169,58 @@ function spineModel3D(opts) {
     (roots[name] = roots[name] || [])[s > 0 ? 0 : 1] = m;
   });
 
-  // ---------- herniation at a chosen level ----------
-  var hernia = new T.Mesh(new T.SphereGeometry(1, 24, 16), M.hernia);
-  hernia.scale.set(0.85, 0.5, 0.7); root.add(hernia);
-  var state = { level: opts.level || "L4-L5", side: 1 }, pressed = null;
-  function setLevel(level) {
-    state.level = level;
-    Object.keys(roots).forEach(function (n) { roots[n].forEach(function (m) { m.color.setHex(0xF5C211); m.emissive.setHex(0x2a1d00); }); });
-    if (!level) { hernia.visible = false; pressed = null; return; }
-    var i = LUMBAR_LEVELS.indexOf(level), dm = discMeshes[i];
-    // back-and-to-the-side bulge, the most common kind, on the right
-    hernia.visible = true;
-    hernia.position.copy(dm.center).add(V(1.15, 0, -1.45).applyAxisAngle(V(1, 0, 0), dm.ang));
-    hernia.rotation.x = dm.ang;
-    var lower = level.split("-")[1];   // it usually presses on the root going down to the next level
-    pressed = roots[lower] ? roots[lower][0] : null;
+  // ---------- herniations ----------
+  // The patient faces +z, so the patient's LEFT is +x. roots[name][0] is the left root, [1] the right.
+  // A finding: { level: "L5-S1", side: "L" | "R" | "B" (both) | "C" (centre), type: "para" | "foram" | "central" | "bulge", mild: bool }
+  var herniaGroup = new T.Group(); root.add(herniaGroup);
+  var M_mild = new T.MeshStandardMaterial({ color: 0xF08A24, roughness: 0.4, emissive: 0x3a1a00 });
+  var M_bulge = new T.MeshStandardMaterial({ color: 0xF08A24, roughness: 0.4, transparent: true, opacity: 0.55, depthWrite: false });
+  var pressed = [];                    // [{ mat, severe }]
+  var spots = [];                      // where to put labels: [{ p, text, severe }]
+  function rootFor(f, sideSign) {      // which root a finding presses on, on one side
+    var parts = f.level.split("-"), idx = sideSign > 0 ? 0 : 1;
+    var name = f.type === "foram" ? parts[0] : parts[1];   // through the exit hole: the root leaving at this level; back-and-side: the one going down
+    return roots[name] ? { mat: roots[name][idx], name: name } : null;
   }
-  setLevel(state.level);
+  function setCase(list) {
+    while (herniaGroup.children.length) { var c = herniaGroup.children.pop(); if (c.geometry !== sphereGeo) c.geometry.dispose(); }
+    Object.keys(roots).forEach(function (n) { roots[n].forEach(function (m) { m.color.setHex(0xF5C211); m.emissive.setHex(0x2a1d00); }); });
+    pressed = []; spots = [];
+    (list || []).forEach(function (f) {
+      var i = LUMBAR_LEVELS.indexOf(f.level); if (i < 0) return;
+      var dm = discMeshes[i];
+      if (f.type === "bulge") {        // broad bulge all round the back of the disc
+        var shell = new T.Mesh(dm.mesh.geometry.clone(), M_bulge);
+        shell.scale.set(1.08, 1.05, 1.12); shell.position.copy(dm.center); shell.rotation.x = dm.ang; herniaGroup.add(shell);
+        return;
+      }
+      var sides = f.side === "B" ? [1, -1] : f.side === "R" ? [-1] : f.side === "C" ? [0] : [1];
+      sides.forEach(function (sg) {
+        var local = f.type === "foram" ? V(sg * 2.15, 0, -1.0) : f.type === "central" || sg === 0 ? V(0, 0, -1.75) : V(sg * 1.0, 0, -1.5);
+        var m = new T.Mesh(sphereGeo, f.mild ? M_mild : M.hernia);
+        var k = f.mild ? 0.62 : 1;
+        m.scale.set(0.85 * k, 0.5 * k, 0.7 * k);
+        m.position.copy(dm.center).add(local.applyAxisAngle(V(1, 0, 0), dm.ang));
+        m.rotation.x = dm.ang; herniaGroup.add(m);
+        spots.push({ p: m.position.clone(), text: f.level, severe: !f.mild });
+        if (sg !== 0) {
+          var r = rootFor(f, sg);
+          if (r) {
+            var old = pressed.filter(function (x) { return x.mat === r.mat; })[0];
+            if (old) old.severe = old.severe || !f.mild;
+            else pressed.push({ mat: r.mat, severe: !f.mild, name: r.name, side: sg, at: f });
+          }
+        }
+      });
+    });
+    refreshCaseLabels();
+  }
+  var sphereGeo = new T.SphereGeometry(1, 24, 16);
+  function setLevel(level) { setCase(level ? [{ level: level, side: "L", type: "para" }] : []); }
 
   // ---------- labels that follow the model ----------
   var showLabels = true;
   var LABELS = [
-    { t: "الانزلاق", cls: "red", at: function () { return hernia.visible ? hernia.position.clone() : null; } },
     { t: "القرص الغضروفي", at: function () { return discMeshes[1].center.clone().add(V(2.5, 0, 0.4)); } },
     { t: "النتوء الشوكي", at: function () { return localToWorld(levels[1], V(0, -0.8, -6.2)); } },
     { t: "جذر عصب", at: function () { return localToWorld(levels[2], V(-4.0, -4.6, 0.5)); } },
@@ -198,10 +228,32 @@ function spineModel3D(opts) {
     { t: "العصعص", at: function () { return cPos.clone(); } }
   ];
   levels.forEach(function (lv, i) { LABELS.push({ t: "L" + (i + 1), cls: "lv", at: function () { return localToWorld(lv, V(-2.9, 0, 0.8)); } }); });
-  LABELS.forEach(function (l) { l.el = document.createElement("span"); l.el.className = "m3d-label " + (l.cls || ""); l.el.textContent = l.t; labelLayer.appendChild(l.el); });
+  // which side is which (patient's left is +x)
+  LABELS.push({ t: "يسار", cls: "lv", at: function () { return sacToWorld(V(5.2, -1.0, 0.8)); } });
+  LABELS.push({ t: "يمين", cls: "lv", at: function () { return sacToWorld(V(-5.2, -1.0, 0.8)); } });
+  function makeLabel(l) { l.el = document.createElement("span"); l.el.className = "m3d-label " + (l.cls || ""); l.el.textContent = l.t; labelLayer.appendChild(l.el); }
+  LABELS.forEach(makeLabel);
+  var caseLabels = [];
+  function refreshCaseLabels() {       // herniation and pressed-root labels go first so they win any overlap
+    if (!labelLayer) return;
+    caseLabels.forEach(function (l) { l.el.remove(); });
+    caseLabels = [];
+    var seen = {};
+    spots.forEach(function (sp) {
+      if (seen[sp.text]) return; seen[sp.text] = 1;
+      caseLabels.push({ t: sp.text, cls: sp.severe ? "red" : "orange", at: function () { return sp.p.clone(); } });
+    });
+    pressed.forEach(function (pr) {
+      var lv = pr.name[0] === "S" ? null : levels[+pr.name.slice(1) - 1];
+      var pt = lv ? localToWorld(lv, V(pr.side * 4.4, -lv.h / 2 - 2.0, -0.9)) : sacToWorld(V(pr.side * 2.6, -1.8, 1.6));
+      caseLabels.push({ t: "عصب " + pr.name + " " + (pr.side > 0 ? "يسار" : "يمين"), cls: pr.severe ? "red" : "orange", at: function () { return pt.clone(); } });
+    });
+    caseLabels.forEach(makeLabel);
+  }
+  if (opts.findings) setCase(opts.findings); else setLevel(opts.level === undefined ? "L4-L5" : opts.level);
   function placeLabels(w, h) {
     var shown = [];                    // skip a label that would cover one already placed
-    LABELS.forEach(function (l) {
+    caseLabels.concat(LABELS).forEach(function (l) {
       var p3 = showLabels && l.at();
       if (!p3) { l.el.style.display = "none"; return; }
       var v = p3.clone().applyMatrix4(root.matrixWorld).project(camera);
@@ -221,7 +273,7 @@ function spineModel3D(opts) {
   root.position.sub(centre);
 
   // ---------- camera: drag to orbit, pinch to zoom ----------
-  var view = { az: 0.95, el: 0.12, r: 47 }, target = V(0, 0, 0), touched = false;
+  var view = { az: opts.az !== undefined ? opts.az : 0.95, el: opts.el !== undefined ? opts.el : 0.12, r: 47 }, target = V(0, 0, 0), touched = !!opts.still;
   attachOrbit(wrap, canvas, view, 22, 110, 1.2, function () { touched = true; hint.style.opacity = 0; });
 
   var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -233,7 +285,11 @@ function spineModel3D(opts) {
     var w = wrap.clientWidth || 320, h = wrap.closest(".fs") ? wrap.clientHeight || w : Math.round(w * 1.15);
     if (w !== lastW || h !== lastH) { renderer.setSize(w, h, false); canvas.style.width = w + "px"; canvas.style.height = h + "px"; camera.aspect = w / h; camera.updateProjectionMatrix(); lastW = w; lastH = h; }
     if (!touched && !reduce) view.az += 0.004;
-    if (pressed) { var g = 0.5 + 0.5 * Math.sin(ts / 220); pressed.color.setRGB(0.85 + 0.15 * g, 0.12, 0.12); pressed.emissive.setRGB(0.35 * g, 0, 0); }
+    var g = 0.5 + 0.5 * Math.sin(ts / 220);
+    pressed.forEach(function (pr) {    // red pulse = touching / pressing, orange pulse = mild narrowing
+      if (pr.severe) { pr.mat.color.setRGB(0.85 + 0.15 * g, 0.12, 0.12); pr.mat.emissive.setRGB(0.35 * g, 0, 0); }
+      else { pr.mat.color.setRGB(0.96, 0.5 + 0.12 * g, 0.1); pr.mat.emissive.setRGB(0.25 * g, 0.1 * g, 0); }
+    });
     camera.position.set(target.x + view.r * Math.sin(view.az) * Math.cos(view.el), target.y + view.r * Math.sin(view.el), target.z + view.r * Math.cos(view.az) * Math.cos(view.el));
     camera.lookAt(target);
     root.updateMatrixWorld();
@@ -245,6 +301,7 @@ function spineModel3D(opts) {
   return {
     el: wrap,
     setLevel: setLevel,
+    setCase: setCase,
     toggleLabels: function () { showLabels = !showLabels; return showLabels; }
   };
 }

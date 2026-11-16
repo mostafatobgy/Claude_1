@@ -116,6 +116,7 @@ var PAGES = {};
 
 PAGES[""] = { title: "افهم حالتك", render: function () {
   var tiles = [
+    ["report", "تقريري", "تقرير الرنين الخاص بك على المجسم، مشروحاً بالعربية", "#FCE7EF", "#C2185B"],
     ["model", "مجسم ثلاثي الأبعاد", "أسفل الظهر كاملاً، قلّبه بإصبعك من كل الجهات", "#E8F3FC", "#07543F"],
     ["spine", "العمود الفقري", "المس أي فقرة لتعرف اسمها وأعصابها", "#E8F3FC", "#2F6FA8"],
     ["disc", "تركيب القرص", "النواة والحلقة الليفية وجذور الأعصاب", "#FFF4E0", "#8A5200"],
@@ -129,8 +130,8 @@ PAGES[""] = { title: "افهم حالتك", render: function () {
   var html = '<div><div class="hero"><h2>افهم حالتك</h2><p>دليلك المصوّر لفهم الانزلاق الغضروفي: العمود الفقري، ودرجات الانزلاق، وطرق علاجه.</p></div>' +
     installHint() + EMERGENCY_LINK + '<div class="grid">' +
     tiles.map(function (t) {
-      var icon = { model: "cube", spine: "spine", disc: "disc", stages: "stages", direction: "direction", mine: "mine", treatment: "treat", videos: "video", sources: "book" }[t[0]];
-      return '<a class="tile' + (t[0] === "model" ? " wide" : "") + '" href="#/' + t[0] + '"><span class="ico" style="background:' + t[3] + ';color:' + t[4] + '">' + ICONS[icon] + '</span><strong>' + t[1] + '</strong><span>' + t[2] + '</span></a>';
+      var icon = { report: "doc", model: "cube", spine: "spine", disc: "disc", stages: "stages", direction: "direction", mine: "mine", treatment: "treat", videos: "video", sources: "book" }[t[0]];
+      return '<a class="tile' + (t[0] === "model" || t[0] === "report" ? " wide" : "") + '" href="#/' + t[0] + '"><span class="ico" style="background:' + t[3] + ';color:' + t[4] + '">' + ICONS[icon] + '</span><strong>' + t[1] + '</strong><span>' + t[2] + '</span></a>';
     }).join("") +
     '</div><h2>قريباً في التطبيق</h2><div class="grid">' +
     ["يوميات الألم", "الأدوية والتنبيهات", "تمارين العلاج الطبيعي", "المواعيد والتقارير"].map(function (s) {
@@ -176,6 +177,112 @@ PAGES.model = { title: "مجسم ثلاثي الأبعاد", render: function ()
   STAGES.forEach(function (st, i) { var b = h('<button class="chip">' + st.name + '</button>'); b.onclick = function () { si = i; apply(); }; stBox.appendChild(b); });
   DIRECTIONS.forEach(function (d, i) { var b = h('<button class="chip">' + d.name + '</button>'); b.onclick = function () { di = i; apply(); }; drBox.appendChild(b); });
   apply();
+  return root;
+} };
+
+/* ---------- «تقريري»: his MRI report on the 3D model ----------
+   The findings come as a private code, saved only on this phone (localStorage). It can be pasted on the
+   page, or opened as a link «…/#/report?c=CODE»: the part after # never leaves the phone, so the report
+   is not sent to the website or stored in the public code. */
+function decodeCase(code) {
+  try {
+    code = String(code || "").trim().replace(/^AFH1\./, "").replace(/-/g, "+").replace(/_/g, "/");
+    var c = JSON.parse(decodeURIComponent(escape(atob(code))));
+    return c && c.f ? c : null;
+  } catch (e) { return null; }
+}
+function findingText(f) {
+  var side = SIDE_AR[f.s] || "";
+  if (f.t === "bulge") return "انتفاخ عام في القرص من الخلف (Bulge).";
+  if (f.t === "para") return "انزلاق خلفي جانبي جهة " + side + (f.th ? "، يلمس الكيس الذي يحوي الأعصاب (Theca)" : "") + ".";
+  if (f.t === "foram") return (f.m ? "بروز بسيط" : "بروز") + " داخل فتحة خروج العصب (Foramen) في " + side + (f.m ? "، يضيّقها قليلاً" : "") + ".";
+  if (f.t === "central") return "انزلاق في المنتصف خلف القرص.";
+  return "";
+}
+function caseRoots(c) {   // root → {name, sides:{L,R}, severe}
+  var out = {};
+  c.f.forEach(function (f) {
+    if (f.t === "bulge" || f.t === "central") return;
+    var parts = f.l.split("-"), name = f.t === "foram" ? parts[0] : parts[1];
+    var o = out[name] || (out[name] = { name: name, L: 0, R: 0 });
+    (f.s === "B" ? ["L", "R"] : [f.s]).forEach(function (sd) { o[sd] = Math.max(o[sd], f.m ? 1 : 2); });
+  });
+  return Object.keys(out).map(function (k) { return out[k]; });
+}
+
+PAGES.report = { title: "تقريري", render: function (q) {
+  if (q.c) { var fromLink = decodeCase(q.c); if (fromLink) store("dahri.case", fromLink); history.replaceState(null, "", "#/report"); }
+  var c = store("dahri.case");
+  if (!c) {
+    var empty = h('<div><p>هنا يظهر تقرير الرنين الخاص بك على المجسم ثلاثي الأبعاد، مع شرح كل جملة فيه بالعربية.</p>' +
+      '<div class="card"><label class="field">كود التقرير<input type="text" id="code" dir="ltr" placeholder="AFH1...."></label>' +
+      '<p class="muted" id="err" hidden style="color:#C62828">الكود غير صحيح. انسخه كاملاً كما وصلك.</p>' +
+      '<button class="btn" id="ok">عرض التقرير</button></div>' +
+      '<div class="note">الكود يحفظ نتائج التقرير على هذا الهاتف فقط، ولا يُرسل إلى أي مكان.</div>' + DISCLAIMER + '</div>');
+    empty.querySelector("#ok").onclick = function () {
+      var cc = decodeCase(empty.querySelector("#code").value);
+      empty.querySelector("#err").hidden = !!cc;
+      if (cc) { store("dahri.case", cc); route(); }
+    };
+    return empty;
+  }
+  var lumbar = c.f.filter(function (f) { return LUMBAR_LEVELS.indexOf(f.l) >= 0; });
+  var findings = lumbar.map(function (f) { return { level: f.l, side: f.s, type: f.t, mild: !!f.m }; });
+  var byLevel = {};
+  lumbar.forEach(function (f) { (byLevel[f.l] = byLevel[f.l] || []).push(f); });
+  var order = LUMBAR_LEVELS.slice().reverse().filter(function (l) { return byLevel[l]; });   // the lowest (usually worst) first
+  var roots = caseRoots(c).sort(function (a, b) { return Math.max(b.L, b.R) - Math.max(a.L, a.R); });
+  var root = h('<div>' +
+    '<div class="card"><h3>تقرير الرنين' + (c.d ? ' <span class="muted ltr">' + esc(c.d) + '</span>' : '') + '</h3>' +
+    '<p class="muted">الأحمر: انزلاق يلمس الأعصاب أو العصب الأكثر تأثراً. البرتقالي: بروز بسيط أو تضييق بسيط. والهالة البرتقالية حول القرص: انتفاخ عام.</p></div>' +
+    '<div class="figure" id="m"></div>' +
+    '<h2>ما وجده التقرير في كل مستوى</h2><div id="lv"></div>' +
+    '<h2>الأعصاب التي قد تتأثر</h2><p class="muted">قارن هذه المناطق بما تشعر به. التقرير يصف الصور، والطبيب هو من يربطها بالأعراض والفحص.</p><div id="rt"></div>' +
+    '<h2>نتائج عامة</h2><div id="gn"></div>' +
+    (c.x && c.x.length ? '<h2>نتائج أخرى</h2><div id="ot"></div>' : '') +
+    '<h2>أسئلة تجهزها للطبيب</h2><div class="card"><ul id="qs" style="margin:0;padding-inline-start:20px"></ul></div>' +
+    '<div class="row" style="margin-top:12px"><button class="btn outline" id="del">حذف التقرير من هذا الهاتف</button></div>' +
+    DISCLAIMER + '</div>');
+  // seen from behind and a little to the side, standing still, so both sides of the spine are visible
+  var model = spineModel3D({ findings: findings, az: Math.PI + 0.45, el: 0.18, still: true });
+  if (model) root.querySelector("#m").appendChild(model.el);
+  else root.querySelector("#m").innerHTML = '<p class="caption">جهازك لا يدعم الرسوم ثلاثية الأبعاد.</p>';
+  root.querySelector("#m").appendChild(h('<p class="caption">اسحب لتدوير المجسم. يظهر المجسم من الخلف كأنك تنظر إلى ظهرك، فيسار المجسم هو يسارك.</p>'));
+
+  root.querySelector("#lv").innerHTML = order.map(function (l) {
+    var fs = byLevel[l], worst = fs.some(function (f) { return !f.m && f.t !== "bulge"; });
+    return '<div class="card" style="border-inline-start:5px solid ' + (worst ? "#D3122B" : "#E07B12") + '"><h3><span class="ltr">' + l + '</span></h3><ul style="margin:4px 0;padding-inline-start:20px">' +
+      fs.map(function (f) { return '<li>' + findingText(f) + '</li>'; }).join("") + '</ul>' +
+      (fs.some(function (f) { return f.q; }) ? '<p class="muted">صياغة التقرير عن هذا المستوى غير واضحة تماماً، فاسأل الطبيب عنها.</p>' : '') +
+      (DISC_NOTES[l] ? '<p class="muted">' + DISC_NOTES[l] + '</p>' : '') + '</div>';
+  }).join("");
+
+  root.querySelector("#rt").innerHTML = roots.map(function (r) {
+    var sides = (r.L && r.R ? "الجهتين" : r.L ? "اليسار" : "اليمين"), sev = Math.max(r.L, r.R) === 2;
+    var info = rootInfo(r.name);
+    return '<div class="card" style="border-inline-start:5px solid ' + (sev ? "#D3122B" : "#E07B12") + '"><h3>جذر العصب <span class="ltr">' + r.name + '</span> — ' + sides + '</h3>' +
+      '<p class="muted">' + (sev ? "الأكثر تأثراً حسب التقرير." : "تأثر بسيط محتمل (تضييق بسيط).") + '</p><dl class="kv">' +
+      '<dt>الإحساس</dt><dd>' + info.feel + '</dd><dt>الحركة</dt><dd>' + info.move + '</dd>' + (info.reflex ? '<dt>المنعكس</dt><dd>' + info.reflex + '</dd>' : '') + '</dl></div>';
+  }).join("");
+
+  root.querySelector("#gn").innerHTML = (c.g || []).map(function (k) {
+    var g = REPORT_GENERAL[k]; if (!g) return "";
+    return '<div class="card' + (g.good ? ' good' : '') + '"><h3>' + (g.good ? "✓ " : "") + g.t + '</h3><p class="muted ltr" style="display:block;text-align:left">' + g.en + '</p><p>' + g.d + '</p></div>';
+  }).join("");
+  if (c.x && c.x.length) root.querySelector("#ot").innerHTML = c.x.map(function (k) {
+    var g = REPORT_OTHER[k]; if (!g) return "";
+    return '<div class="card"><h3>' + g.t + '</h3><p class="muted ltr" style="display:block;text-align:left">' + g.en + '</p><p>' + g.d + '</p></div>';
+  }).join("");
+
+  var qs = [
+    "هل تتوافق أعراضي (مكان الألم والتنميل) مع الأعصاب المذكورة؟",
+    "أي مستوى هو المسؤول الأكبر عن ألمي؟"
+  ];
+  if (lumbar.some(function (f) { return f.q; })) qs.push("ماذا تعني عبارة التقرير عن المستوى غير الواضح بالضبط، وهل فيه بروز فعلاً؟");
+  qs.push("هل أحتاج علاجاً طبيعياً أو حقناً، أم أن الجراحة واردة في حالتي؟", "ما العلامات التي يجب أن أعود فيها إليك فوراً؟", "ما الأنشطة والحركات التي أتجنبها الآن، وما المسموح؟");
+  root.querySelector("#qs").innerHTML = qs.map(function (x) { return "<li>" + x + "</li>"; }).join("");
+
+  root.querySelector("#del").onclick = function () { if (confirm("حذف بيانات التقرير من هذا الهاتف؟")) { try { localStorage.removeItem("dahri.case"); } catch (e) {} route(); } };
   return root;
 } };
 
