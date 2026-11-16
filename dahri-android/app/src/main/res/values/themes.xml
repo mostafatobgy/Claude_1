@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Dahri" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">#07543F</item>
+        <item name="colorPrimaryDark">#07543F</item>
+        <item name="android:statusBarColor">#07543F</item>
+        <item name="android:windowBackground">@color/ic_launcher_background</item>
+    </style>
+</resources>

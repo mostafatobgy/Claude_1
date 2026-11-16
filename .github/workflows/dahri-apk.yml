@@ -1,0 +1,43 @@
+name: Build Dahri APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "dahri-android/**"
+      - ".github/workflows/dahri-apk.yml"
+
+permissions:
+  contents: write   # to publish the APK as a release download
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dahri-android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk dahri.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dahri-apk
+          path: dahri-android/dahri.apk
+      # Published from any branch while this is a preview, so there is always one fixed download link.
+      - name: Publish at a fixed download link
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view dahri >/dev/null 2>&1 || \
+            gh release create dahri --title "تطبيق افهم حالتك" --notes "أحدث نسخة من تطبيق افهم حالتك. التحميل: dahri.apk"
+          gh release upload dahri dahri.apk --clobber
+          gh release edit dahri --notes "أحدث نسخة من تطبيق افهم حالتك (رقم ${{ github.run_number }}، فرع ${{ github.ref_name }}). التحميل: dahri.apk"
