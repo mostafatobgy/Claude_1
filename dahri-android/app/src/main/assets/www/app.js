@@ -84,6 +84,17 @@ function closeFullscreen() {
 // back from an info sheet opened inside full screen returns to the full-screen entry: stay there
 window.addEventListener("popstate", function () { if (fsFig && !(history.state && history.state.fs)) closeFullscreen(); });
 
+/* On iPhone Safari, explain how to put the app on the home screen (hidden once it is installed). */
+function installHint() {
+  var ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (!ios || navigator.standalone || store("dahri.hideInstall")) return "";
+  return '<div class="card install" id="install"><button class="sheet-close" onclick="store(\'dahri.hideInstall\', 1); this.parentNode.remove()" aria-label="إغلاق">✕</button>' +
+    '<h3>ثبّت التطبيق على شاشة الآيفون</h3><ol>' +
+    '<li>اضغط زر المشاركة <span class="ios-share" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></span> أسفل الشاشة في Safari.</li>' +
+    '<li>اختر <b>«إضافة إلى الشاشة الرئيسية»</b>.</li><li>اضغط <b>«إضافة»</b>.</li></ol>' +
+    '<p class="muted">بعدها يفتح من أيقونته بملء الشاشة مثل أي تطبيق، ويعمل بدون إنترنت ما عدا الفيديوهات.</p></div>';
+}
+
 /* ---------- bottom sheet ---------- */
 var sheet = document.getElementById("sheet"), backdrop = document.getElementById("sheetBackdrop");
 function openSheet(html) {
@@ -116,7 +127,7 @@ PAGES[""] = { title: "افهم حالتك", render: function () {
     ["sources", "المصادر", "من أين جاءت هذه المعلومات", "#F5F7FA", "#5B6B7F"]
   ];
   var html = '<div><div class="hero"><h2>افهم حالتك</h2><p>دليلك المصوّر لفهم الانزلاق الغضروفي: العمود الفقري، ودرجات الانزلاق، وطرق علاجه.</p></div>' +
-    EMERGENCY_LINK + '<div class="grid">' +
+    installHint() + EMERGENCY_LINK + '<div class="grid">' +
     tiles.map(function (t) {
       var icon = { model: "cube", spine: "spine", disc: "disc", stages: "stages", direction: "direction", mine: "mine", treatment: "treat", videos: "video", sources: "book" }[t[0]];
       return '<a class="tile' + (t[0] === "model" ? " wide" : "") + '" href="#/' + t[0] + '"><span class="ico" style="background:' + t[3] + ';color:' + t[4] + '">' + ICONS[icon] + '</span><strong>' + t[1] + '</strong><span>' + t[2] + '</span></a>';
@@ -437,3 +448,8 @@ function route() {
 backBtn.onclick = function () { if (history.length > 1) history.back(); else location.hash = ""; };
 window.addEventListener("hashchange", route);
 route();
+
+/* Web (iPhone) version only: keep a copy for offline use. The Android app loads from file:// and skips this. */
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+  navigator.serviceWorker.register("sw.js").catch(function () {});
+}

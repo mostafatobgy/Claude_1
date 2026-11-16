@@ -19,6 +19,15 @@
 بعد كل تعديل يبني GitHub Actions الملف تلقائياً وينشره على رابط ثابت:
 https://github.com/mostafatobgy/Claude_1/releases/download/dahri/dahri.apk
 
+## نسخة الآيفون
+
+نفس الصفحات تُنشر كتطبيق ويب على GitHub Pages ضمن موقع الأخبار، على العنوان:
+https://mostafatobgy.github.io/Claude_1/dahri/
+
+يفتحه صديقك في Safari ثم: زر المشاركة ← «إضافة إلى الشاشة الرئيسية». بعدها يظهر بأيقونته ويفتح بملء الشاشة،
+ويعمل بدون إنترنت (ما عدا الفيديوهات)، ويصله كل تحديث تلقائياً عند فتحه. يُنشر من الفرع `main` مع كل تحديث للموقع
+(خطوة «Add the «افهم حالتك» web app» في `.github/workflows/update-news.yml`).
+
 ## للمطورين
 
 الصفحات في `app/src/main/assets/www/` (HTML وJavaScript بدون مكتبات)، والتطبيق غلاف WebView في

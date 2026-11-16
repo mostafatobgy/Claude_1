@@ -196,3 +196,16 @@ svg .hit { cursor: pointer; }
 body.fs-on { overflow: hidden; }
 .sheet-backdrop { z-index: 39; }
 .sheet { z-index: 40; }
+
+/* iPhone: keep clear of the notch and the home bar */
+.topbar, .fs-bar { padding-top: calc(10px + env(safe-area-inset-top)); padding-bottom: 10px; min-height: calc(56px + env(safe-area-inset-top)); }
+.fs-bar { height: auto; }
+.figure.fs { top: calc(56px + env(safe-area-inset-top)); padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+.figure.fs .m3d { height: calc(100vh - 72px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); height: calc(100dvh - 72px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
+main { padding-bottom: calc(40px + env(safe-area-inset-bottom)); }
+.sheet { padding-bottom: calc(26px + env(safe-area-inset-bottom)); }
+.install { position: relative; background: var(--green-soft); border-color: #CFE6DA; }
+.install ol { margin: 6px 0 8px; padding-inline-start: 22px; }
+.install .ios-share { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 6px; background: #fff; color: #0A84FF; vertical-align: -6px; }
+.install .sheet-close { inset-inline-start: auto; inset-inline-end: 6px; top: 6px; }
+.install h3 { margin-inline-end: 0; }
