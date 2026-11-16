@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One-colour version for themed icons. A magnifying glass over a lumbar spine: ivory vertebrae, amber discs, yellow nerves,
+     and one red herniated disc pressing on a nerve (red). Generated; keep the design in sync with the preview. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M69,67 L77,75" android:strokeColor="#FFFFFF" android:strokeWidth="8" android:strokeLineCap="round" android:strokeLineJoin="round"/>
+    <path android:pathData="M48,23a25,25 0 1 1 0,50a25,25 0 1 1 0,-50z" android:strokeColor="#FFFFFF" android:strokeWidth="4" android:strokeLineCap="round" android:strokeLineJoin="round"/>
+    <path android:pathData="M40.1,30.5h12.2a2.4,2.4 0 0 1 2.4,2.4v1.6a2.4,2.4 0 0 1 -2.4,2.4h-12.2a2.4,2.4 0 0 1 -2.4,-2.4v-1.6a2.4,2.4 0 0 1 2.4,-2.4z" android:fillColor="#FFFFFF"/>
+    <path android:pathData="M40.8,40h13.2a2.4,2.4 0 0 1 2.4,2.4v1.8a2.4,2.4 0 0 1 -2.4,2.4h-13.2a2.4,2.4 0 0 1 -2.4,-2.4v-1.8a2.4,2.4 0 0 1 2.4,-2.4z" android:fillColor="#FFFFFF"/>
+    <path android:pathData="M41.1,49.7h14.2a2.4,2.4 0 0 1 2.4,2.4v2a2.4,2.4 0 0 1 -2.4,2.4h-14.2a2.4,2.4 0 0 1 -2.4,-2.4v-2a2.4,2.4 0 0 1 2.4,-2.4z" android:fillColor="#FFFFFF"/>
+    <path android:pathData="M40,59.6h15.2a2.4,2.4 0 0 1 2.4,2.4v1.8a2.4,2.4 0 0 1 -2.4,2.4h-15.2a2.4,2.4 0 0 1 -2.4,-2.4v-1.8a2.4,2.4 0 0 1 2.4,-2.4z" android:fillColor="#FFFFFF"/>
+    <path android:pathData="M57.25,55.15a2.9,2.9 0 1 1 0,5.8a2.9,2.9 0 1 1 0,-5.8z" android:fillColor="#FFFFFF"/>
+</vector>
