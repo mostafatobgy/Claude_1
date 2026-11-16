@@ -1,4 +1,4 @@
-/* «ظهري» — section «افهم حالتك». Hash-routed pages, no network needed except for videos. */
+/* «افهم حالتك» — hash-routed pages, no network needed except for videos. */
 "use strict";
 
 var view = document.getElementById("view");
@@ -49,6 +49,12 @@ function discViews(box, labels) {
   return { go: function (p) { if (m) m.go(p); a.go(p); } };
 }
 
+/* The lumbar level saved on the «حالتي أنا» page, if it is in the lower back. */
+function lumbarLevel() {
+  var m = store("dahri.mine");
+  return m && LUMBAR_LEVELS.indexOf(m.level) >= 0 ? m.level : "L4-L5";
+}
+
 /* ---------- bottom sheet ---------- */
 var sheet = document.getElementById("sheet"), backdrop = document.getElementById("sheetBackdrop");
 function openSheet(html) {
@@ -68,9 +74,9 @@ window.addEventListener("popstate", function () { if (!sheet.hidden) hideSheet()
 /* ---------- pages ---------- */
 var PAGES = {};
 
-PAGES[""] = { title: "ظهري", render: function () {
+PAGES[""] = { title: "افهم حالتك", render: function () {
   var tiles = [
-    ["model", "مجسم ثلاثي الأبعاد", "قلّب الفقرات والقرص بإصبعك من كل الجهات", "#E8F3FC", "#07543F"],
+    ["model", "مجسم ثلاثي الأبعاد", "أسفل الظهر كاملاً، قلّبه بإصبعك من كل الجهات", "#E8F3FC", "#07543F"],
     ["spine", "العمود الفقري", "المس أي فقرة لتعرف اسمها وأعصابها", "#E8F3FC", "#2F6FA8"],
     ["disc", "تركيب القرص", "النواة والحلقة الليفية وجذور الأعصاب", "#FFF4E0", "#8A5200"],
     ["stages", "درجات الانزلاق", "من الانتفاخ إلى الانفصال، بالحركة", "#FCE7EF", "#C2185B"],
@@ -80,11 +86,11 @@ PAGES[""] = { title: "ظهري", render: function () {
     ["videos", "فيديوهات", "شروحات مرئية على يوتيوب", "#FDECEC", "#C62828"],
     ["sources", "المصادر", "من أين جاءت هذه المعلومات", "#F5F7FA", "#5B6B7F"]
   ];
-  var html = '<div><div class="hero"><h2>افهم حالتك</h2><p>شرح مبسط بالرسوم للعمود الفقري والانزلاق الغضروفي وطرق علاجه.</p></div>' +
+  var html = '<div><div class="hero"><h2>افهم حالتك</h2><p>دليلك المصوّر لفهم الانزلاق الغضروفي: العمود الفقري، ودرجات الانزلاق، وطرق علاجه.</p></div>' +
     EMERGENCY_LINK + '<div class="grid">' +
     tiles.map(function (t) {
       var icon = { model: "cube", spine: "spine", disc: "disc", stages: "stages", direction: "direction", mine: "mine", treatment: "treat", videos: "video", sources: "book" }[t[0]];
-      return '<a class="tile" href="#/' + t[0] + '"><span class="ico" style="background:' + t[3] + ';color:' + t[4] + '">' + ICONS[icon] + '</span><strong>' + t[1] + '</strong><span>' + t[2] + '</span></a>';
+      return '<a class="tile' + (t[0] === "model" ? " wide" : "") + '" href="#/' + t[0] + '"><span class="ico" style="background:' + t[3] + ';color:' + t[4] + '">' + ICONS[icon] + '</span><strong>' + t[1] + '</strong><span>' + t[2] + '</span></a>';
     }).join("") +
     '</div><h2>قريباً في التطبيق</h2><div class="grid">' +
     ["يوميات الألم", "الأدوية والتنبيهات", "تمارين العلاج الطبيعي", "المواعيد والتقارير"].map(function (s) {
@@ -94,10 +100,29 @@ PAGES[""] = { title: "ظهري", render: function () {
 } };
 
 PAGES.model = { title: "مجسم ثلاثي الأبعاد", render: function () {
-  var root = h('<div><p>مجسم لفقرتين من أسفل الظهر وبينهما القرص، وخلفه الكيس العصبي وجذور الأعصاب. اختر درجة الانزلاق واتجاهه وشاهد التغيير من أي زاوية.</p>' +
+  var root = h('<div><p>مجسم لأسفل الظهر كاملاً: الفقرات القطنية الخمس والأقراص بينها، والعجز والعصعص، وجذور الأعصاب بالأصفر. القرص المنزلق بالأحمر، والعصب الذي يضغط عليه ينبض بالأحمر.</p>' +
+    '<div class="figure" id="full"></div>' +
+    '<h3>مكان الانزلاق</h3><div class="chips" id="lv"></div>' +
+    '<div class="row" style="margin:4px 0 8px"><button class="btn outline" id="lbl">إخفاء الأسماء</button></div>' +
+    '<h2>نظرة أقرب على قرص واحد</h2><p>فقرتان وبينهما القرص، والفقرة العليا شفافة لترى ما بداخله. اختر درجة الانزلاق واتجاهه.</p>' +
     '<div class="figure" id="ax"></div>' +
     '<h3>درجة الانزلاق</h3><div class="chips" id="st"></div><h3>الاتجاه</h3><div class="chips" id="dr"></div>' +
     '<div class="card" id="txt"></div>' + DISCLAIMER + '</div>');
+  var full = spineModel3D({ level: lumbarLevel() });
+  if (full) {
+    root.querySelector("#full").appendChild(full.el);
+    var lvBox = root.querySelector("#lv"), cur = lumbarLevel();
+    LUMBAR_LEVELS.concat([""]).forEach(function (l) {
+      var b = h('<button class="chip">' + (l || "بدون انزلاق") + '</button>');
+      b.setAttribute("aria-pressed", l === cur);
+      b.onclick = function () { full.setLevel(l); [].forEach.call(lvBox.children, function (c) { c.setAttribute("aria-pressed", c === b); }); };
+      lvBox.appendChild(b);
+    });
+    root.querySelector("#lbl").onclick = function () { this.textContent = full.toggleLabels() ? "إخفاء الأسماء" : "إظهار الأسماء"; };
+  } else {
+    root.querySelector("#full").innerHTML = '<p class="caption">جهازك لا يدعم الرسوم ثلاثية الأبعاد.</p>';
+    root.querySelector("#lbl").hidden = true;
+  }
   var w = discViews(root.querySelector("#ax"), false), si = 3, di = 1;
   var stBox = root.querySelector("#st"), drBox = root.querySelector("#dr"), txt = root.querySelector("#txt");
   function apply() {
@@ -245,8 +270,11 @@ PAGES.mine = { title: "حالتي أنا", render: function (q) {
     '<label class="field">الاتجاه<select id="dr">' + DIRECTIONS.map(function (d) { return '<option value="' + d.id + '"' + (d.id === saved.dir ? ' selected' : '') + '>' + d.name + ' (' + d.en + ')</option>'; }).join("") + '<option value="unknown"' + (saved.dir === "unknown" ? " selected" : "") + '>غير مذكور / لا أعرف</option></select></label>' +
     '<p class="muted">كلمات قد تجدها في التقرير: Left أي يسار، Right أي يمين، Posterior أي خلفي، Broad-based أي واسع القاعدة، Nerve root compression أي ضغط على جذر عصب.</p>' +
     '</div><div class="card" id="res"></div>' +
+    '<div class="figure" id="full"></div>' +
     '<div class="figure" id="ax"></div>' +
     '<div class="figure" id="sp"></div>' + DISCLAIMER + '</div>');
+  var full3 = spineModel3D({ level: lumbarLevel() });
+  if (full3) root.querySelector("#full").appendChild(full3.el);
   var w = discViews(root.querySelector("#ax"), true);
   var lv = root.querySelector("#lv"), st = root.querySelector("#st"), dr = root.querySelector("#dr");
   function update() {
@@ -269,6 +297,8 @@ PAGES.mine = { title: "حالتي أنا", render: function (q) {
     root.querySelector("#res").innerHTML = html; isolateCodes(root.querySelector("#res"));
     var p = s.stage === "unknown" ? STAGES[2].p : stage.p;
     w.go(Object.assign({ theta: dir.theta }, p));
+    if (LUMBAR_LEVELS.indexOf(s.level) >= 0 && full3) full3.setLevel(s.level);
+    root.querySelector("#full").hidden = !(full3 && LUMBAR_LEVELS.indexOf(s.level) >= 0);
     var sp = root.querySelector("#sp"); sp.innerHTML = "";
     sp.appendChild(drawSpine({ highlight: s.level, onPick: function (k, c) { if (k === "d") { lv.value = c; update(); window.scrollTo({ top: 0, behavior: "smooth" }); } } }));
   }

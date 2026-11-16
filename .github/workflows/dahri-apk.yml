@@ -38,6 +38,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release view dahri >/dev/null 2>&1 || \
-            gh release create dahri --title "تطبيق ظهري" --notes "أحدث نسخة من تطبيق ظهري. التحميل: dahri.apk"
+            gh release create dahri --title "تطبيق افهم حالتك" --notes "أحدث نسخة من تطبيق افهم حالتك. التحميل: dahri.apk"
           gh release upload dahri dahri.apk --clobber
-          gh release edit dahri --notes "أحدث نسخة من تطبيق ظهري (رقم ${{ github.run_number }}، فرع ${{ github.ref_name }}). التحميل: dahri.apk"
+          gh release edit dahri --notes "أحدث نسخة من تطبيق افهم حالتك (رقم ${{ github.run_number }}، فرع ${{ github.ref_name }}). التحميل: dahri.apk"
