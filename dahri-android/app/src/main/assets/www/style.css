@@ -209,3 +209,5 @@ main { padding-bottom: calc(40px + env(safe-area-inset-bottom)); }
 .install .ios-share { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 6px; background: #fff; color: #0A84FF; vertical-align: -6px; }
 .install .sheet-close { inset-inline-start: auto; inset-inline-end: 6px; top: 6px; }
 .install h3 { margin-inline-end: 0; }
+.m3d-label.orange { color: #fff; background: #E07B12; border-color: #E07B12; }
+.card.good { background: var(--green-soft); border-color: #CFE6DA; }
