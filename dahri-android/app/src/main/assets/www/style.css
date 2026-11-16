@@ -177,3 +177,5 @@ svg .hit { cursor: pointer; }
 .tile.wide { grid-column: 1 / -1; min-height: 0; display: grid; grid-template-columns: auto 1fr; column-gap: 12px; align-items: center;
   background: linear-gradient(135deg, #E8F5EE, #E8F3FC); border-color: #CFE6DA; }
 .tile.wide .ico { grid-row: span 2; width: 56px; height: 56px; background: #fff !important; }
+.m3d-reset { position: absolute; top: 8px; inset-inline-start: 8px; width: 44px; height: 44px; border-radius: 50%;
+  border: 1px solid #DCE5EC; background: rgba(255,255,255,.9); color: var(--primary-dark); font-size: 1.3rem; z-index: 2; }

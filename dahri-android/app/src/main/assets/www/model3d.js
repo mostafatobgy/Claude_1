@@ -8,6 +8,42 @@ function webglOK() {
   catch (e) { return false; }
 }
 
+/* Finger controls for a 3D view: one finger turns it, two fingers zoom, and a button resets it.
+   Reads the fingers the browser reports as on the screen right now (e.touches) on every event,
+   so a lift the browser never reported cannot leave a "stuck" finger behind. */
+function attachOrbit(wrap, canvas, view, minR, maxR, maxEl, onTouch) {
+  var home = { az: view.az, el: view.el, r: view.r }, last = null;
+  function snap(t) {
+    if (t.length === 1) return { n: 1, x: t[0].clientX, y: t[0].clientY };
+    if (t.length >= 2) return { n: 2, d: Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY) || 1 };
+    return null;
+  }
+  function turn(dx, dy) { view.az -= dx * 0.012; view.el = Math.max(-maxEl, Math.min(maxEl, view.el + dy * 0.012)); }
+  function zoom(k) { view.r = Math.max(minR, Math.min(maxR, view.r * k)); }
+  canvas.style.touchAction = "none";
+  canvas.addEventListener("touchstart", function (e) { e.preventDefault(); onTouch(); last = snap(e.touches); }, { passive: false });
+  canvas.addEventListener("touchmove", function (e) {
+    e.preventDefault();
+    var cur = snap(e.touches);
+    if (cur && last && cur.n === last.n) {
+      if (cur.n === 1) turn(cur.x - last.x, cur.y - last.y); else zoom(last.d / cur.d);
+    }
+    last = cur;
+  }, { passive: false });
+  function end(e) { last = snap(e.touches); }
+  canvas.addEventListener("touchend", end); canvas.addEventListener("touchcancel", end);
+  // mouse, for testing on a computer
+  var mouse = null;
+  canvas.addEventListener("mousedown", function (e) { onTouch(); mouse = { x: e.clientX, y: e.clientY }; });
+  window.addEventListener("mousemove", function (e) { if (mouse) { turn(e.clientX - mouse.x, e.clientY - mouse.y); mouse = { x: e.clientX, y: e.clientY }; } });
+  window.addEventListener("mouseup", function () { mouse = null; });
+  canvas.addEventListener("wheel", function (e) { e.preventDefault(); zoom(e.deltaY > 0 ? 1.08 : 0.93); }, { passive: false });
+  var reset = document.createElement("button");
+  reset.className = "m3d-reset"; reset.setAttribute("aria-label", "إرجاع المجسم لوضعه الأول"); reset.textContent = "↺";
+  reset.onclick = function () { view.az = home.az; view.el = home.el; view.r = home.r; };
+  wrap.appendChild(reset);
+}
+
 /* 2D cross-section coordinates (draw.js) → 3D: x right, z toward the back, y up. */
 function to3(x, y, h) { return new THREE.Vector3((x - 160) / 10, h || 0, (y - 96) / 10); }
 
@@ -142,33 +178,12 @@ function model3D(opts) {
 
   // ---- camera: drag to orbit, pinch to zoom ----
   var view = { az: 0.6, el: 0.85, r: 50 }, target = new THREE.Vector3(1, -0.5, 5), touched = false;
-  var pts = {}, last = null, lastPinch = 0;
   function place() {
     camera.position.set(target.x + view.r * Math.sin(view.az) * Math.cos(view.el), target.y + view.r * Math.sin(view.el),
       target.z + view.r * Math.cos(view.az) * Math.cos(view.el));
     camera.lookAt(target);
   }
-  canvas.style.touchAction = "none";
-  canvas.addEventListener("pointerdown", function (e) {
-    pts[e.pointerId] = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); touched = true; hint.style.opacity = 0;
-  });
-  canvas.addEventListener("pointermove", function (e) {
-    if (!pts[e.pointerId]) return;
-    var ids = Object.keys(pts), p = pts[e.pointerId];
-    if (ids.length === 1) {
-      view.az -= (e.clientX - p.x) * 0.012;
-      view.el = Math.max(-1.3, Math.min(1.3, view.el + (e.clientY - p.y) * 0.012));
-    }
-    pts[e.pointerId] = { x: e.clientX, y: e.clientY };
-    if (ids.length === 2) {
-      var a = pts[ids[0]], b = pts[ids[1]], d = Math.hypot(a.x - b.x, a.y - b.y);
-      if (lastPinch) view.r = Math.max(18, Math.min(80, view.r * lastPinch / d));
-      lastPinch = d;
-    }
-  });
-  function up(e) { delete pts[e.pointerId]; lastPinch = 0; }
-  canvas.addEventListener("pointerup", up); canvas.addEventListener("pointercancel", up);
-  canvas.addEventListener("wheel", function (e) { e.preventDefault(); view.r = Math.max(18, Math.min(80, view.r * (e.deltaY > 0 ? 1.08 : 0.93))); }, { passive: false });
+  attachOrbit(wrap, canvas, view, 18, 80, 1.3, function () { touched = true; hint.style.opacity = 0; });
 
   // ---- shape animation ----
   var tween = null;

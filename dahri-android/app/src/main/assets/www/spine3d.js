@@ -221,23 +221,8 @@ function spineModel3D(opts) {
   root.position.sub(centre);
 
   // ---------- camera: drag to orbit, pinch to zoom ----------
-  var view = { az: 0.95, el: 0.12, r: 47 }, target = V(0, 0, 0), touched = false, pts = {}, lastPinch = 0;
-  canvas.style.touchAction = "none";
-  canvas.addEventListener("pointerdown", function (e) { pts[e.pointerId] = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); touched = true; hint.style.opacity = 0; });
-  canvas.addEventListener("pointermove", function (e) {
-    if (!pts[e.pointerId]) return;
-    var ids = Object.keys(pts), q = pts[e.pointerId];
-    if (ids.length === 1) { view.az -= (e.clientX - q.x) * 0.012; view.el = Math.max(-1.2, Math.min(1.2, view.el + (e.clientY - q.y) * 0.012)); }
-    pts[e.pointerId] = { x: e.clientX, y: e.clientY };
-    if (ids.length === 2) {
-      var a = pts[ids[0]], b = pts[ids[1]], d = Math.hypot(a.x - b.x, a.y - b.y);
-      if (lastPinch) view.r = Math.max(22, Math.min(110, view.r * lastPinch / d));
-      lastPinch = d;
-    }
-  });
-  function up(e) { delete pts[e.pointerId]; lastPinch = 0; }
-  canvas.addEventListener("pointerup", up); canvas.addEventListener("pointercancel", up);
-  canvas.addEventListener("wheel", function (e) { e.preventDefault(); view.r = Math.max(22, Math.min(110, view.r * (e.deltaY > 0 ? 1.08 : 0.93))); }, { passive: false });
+  var view = { az: 0.95, el: 0.12, r: 47 }, target = V(0, 0, 0), touched = false;
+  attachOrbit(wrap, canvas, view, 22, 110, 1.2, function () { touched = true; hint.style.opacity = 0; });
 
   var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var started = performance.now(), lastW = 0;
