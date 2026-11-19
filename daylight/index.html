@@ -67,7 +67,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 .pill{font-size:.72rem;background:var(--accent);color:var(--accent-ink);border-radius:99px;padding:1px 8px;margin-inline-start:6px}
 .lens{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .len{border-radius:10px;padding:10px 12px;background:var(--bg)}
-.len b{display:block;font-size:1.3rem;font-family:var(--f-num);font-weight:500;direction:ltr;text-align:right}
+.len b{display:block;font-size:1.3rem;font-weight:600;font-variant-numeric:tabular-nums}
 .len span{font-size:.8rem;color:var(--muted)}
 .dayPick{display:flex;flex-direction:column;gap:6px}
 input[type=range]{width:100%;accent-color:var(--accent)}
@@ -186,7 +186,18 @@ input[type=range]{width:100%;accent-color:var(--accent)}
   <p class="note">الحساب فلكي يجري داخل الصفحة، ويتراوح الفرق عن التقويم الرسمي بين دقيقة ودقيقتين. لا يُحسب ارتفاع المكان عن سطح البحر.</p>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.35.2/plotly.min.js"></script>
+<script>
+/* load the chart library from several CDNs, first that answers wins */
+window.__plotlyReady=new Promise(function(res){
+  var urls=["https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js",
+            "https://unpkg.com/plotly.js-dist-min@2.35.2/plotly.min.js",
+            "https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.35.2/plotly.min.js"];
+  (function next(i){ if(i>=urls.length){res(false);return}
+    var sc=document.createElement("script"); sc.src=urls[i]; sc.async=true;
+    sc.onload=function(){res(typeof window.Plotly!=="undefined")}; sc.onerror=function(){sc.remove();next(i+1)};
+    document.head.appendChild(sc) })(0);
+});
+</script>
 <script>
 (function(){
 "use strict";
@@ -497,7 +508,7 @@ function renderAll(){
   $("placeLine").innerHTML=`${S.place} · <span class="num">${S.lat.toFixed(3)}°, ${S.lon.toFixed(3)}°</span> · توقيت ${S.zone}`;
   $("lat").value=S.lat.toFixed(4); $("lon").value=S.lon.toFixed(4);
   const ti=todayIdx(); if(S.dayIdx>=S.data.length) S.dayIdx=S.data.length-1;
-  if(hasPlotly()){ renderYear(); renderLen(); render3D() } else { $("cYear").innerHTML='<div class="load">تعذّر تحميل مكتبة المخططات. تحقق من الاتصال بالإنترنت ثم أعد فتح الصفحة.</div>' }
+  if(hasPlotly()){ renderYear(); renderLen(); render3D() }
   renderDay();
 }
 // controls
@@ -532,7 +543,13 @@ try{ matchMedia("(prefers-color-scheme: dark)").addEventListener("change",rerend
 new MutationObserver(rerenderTheme).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
 // start
 S.dayIdx=Math.max(0,todayIdx());
-renderAll(); if(hasPlotly()) bindClicks();
+renderAll();
+["cLen","c3d"].forEach(id=>{$(id).innerHTML='<div class="load">جارٍ تحميل المخطط…</div>'});
+window.__plotlyReady.then(ok=>{
+  if(!ok){ ["cYear","cLen","c3d"].forEach(id=>{$(id).innerHTML='<div class="load">تعذّر تحميل مكتبة المخططات. تحقق من الاتصال بالإنترنت ثم أعد فتح الصفحة.</div>'}); return }
+  ["cYear","cLen","c3d"].forEach(id=>{$(id).innerHTML=""});
+  renderYear(); renderLen(); render3D(); bindClicks(); markDay();
+});
 setInterval(()=>{ if(isTodayIdx(S.dayIdx)) renderDay() },60000);
 // expose for testing
 window.__mdr={dayTimes,S};
