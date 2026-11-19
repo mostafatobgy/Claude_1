@@ -1,0 +1,540 @@
+<title>مدار الليل والنهار</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Reem+Kufi:wght@500;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: one narrow column like a phone app; a sky-ring for the chosen day, then year-long charts, then the 3D view. */
+:root{
+  --bg:#eef2f7; --surface:#ffffff; --fg:#142033; --muted:#5a6779; --line:#d9e0ea;
+  --day:#f0a531; --dawn:#f3c98b; --twilight:#7d74c9; --night:#1f2d4f;
+  --accent:#b45e06; --accent-ink:#ffffff;
+  --fajr:#3f74d8; --shuruq:#e2a21a; --dhuhr:#d2453f; --asr:#23936a; --maghrib:#e0701a; --isha:#8a55d2;
+  --f-display:"Reem Kufi","Noto Kufi Arabic","Segoe UI",Tahoma,sans-serif;
+  --f-body:"IBM Plex Sans Arabic","Segoe UI",Tahoma,sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0b111d; --surface:#131b2b; --fg:#e5eaf2; --muted:#93a0b5; --line:#243049;
+  --day:#f4b145; --dawn:#c99a63; --twilight:#6f64c6; --night:#2b3b66;
+  --accent:#f4b145; --accent-ink:#1a1204;
+  --fajr:#6f9cf0; --shuruq:#f0c04a; --dhuhr:#f0706a; --asr:#4cc596; --maghrib:#f39548; --isha:#b18af0;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0b111d; --surface:#131b2b; --fg:#e5eaf2; --muted:#93a0b5; --line:#243049;
+  --day:#f4b145; --dawn:#c99a63; --twilight:#6f64c6; --night:#2b3b66;
+  --accent:#f4b145; --accent-ink:#1a1204;
+  --fajr:#6f9cf0; --shuruq:#f0c04a; --dhuhr:#f0706a; --asr:#4cc596; --maghrib:#f39548; --isha:#b18af0;
+  color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1,h2{font-family:var(--f-display);font-weight:700;margin:0;text-wrap:balance}
+h1{font-size:1.9rem;line-height:1.2}
+h2{font-size:1.25rem}
+.sub{color:var(--muted);margin:0}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate}
+header{display:flex;flex-direction:column;gap:6px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel p{margin:0}
+.note{color:var(--muted);font-size:.85rem}
+
+/* location controls */
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+label{display:flex;flex-direction:column;gap:4px;font-size:.82rem;color:var(--muted);letter-spacing:.01em}
+select,input[type=number],button{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:0}
+button{cursor:pointer}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent;font-weight:600}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+.row>*{flex:1 1 140px}
+#geoMsg{font-size:.85rem;color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{border:0;border-radius:0;background:transparent;padding:7px 12px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+
+/* today */
+.today{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:18px;align-items:center}
+@media (max-width:640px){.today{grid-template-columns:1fr}}
+#ring{width:100%;max-width:300px;aspect-ratio:1;margin:0 auto;display:block}
+.prayers{display:flex;flex-direction:column;gap:2px;margin:0;padding:0;list-style:none}
+.prayers li{display:flex;justify-content:space-between;align-items:center;padding:7px 4px;border-bottom:1px solid var(--line)}
+.prayers li:last-child{border-bottom:0}
+.prayers .name{display:flex;align-items:center;gap:8px;font-weight:500}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+.prayers li.next{background:color-mix(in srgb,var(--accent) 12%,transparent);border-radius:8px}
+.pill{font-size:.72rem;background:var(--accent);color:var(--accent-ink);border-radius:99px;padding:1px 8px;margin-inline-start:6px}
+.lens{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.len{border-radius:10px;padding:10px 12px;background:var(--bg)}
+.len b{display:block;font-size:1.3rem;font-family:var(--f-num);font-weight:500;direction:ltr;text-align:right}
+.len span{font-size:.8rem;color:var(--muted)}
+.dayPick{display:flex;flex-direction:column;gap:6px}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.dayPick .row2{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* key days */
+.keys{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.key{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:2px;cursor:pointer;text-align:start}
+.key .k{font-size:.8rem;color:var(--muted)}
+.key .d{font-family:var(--f-display);font-size:1.1rem}
+.key .v{font-size:.9rem}
+.key.sum{border-top:3px solid var(--day)}
+.key.win{border-top:3px solid var(--night)}
+.key.eq{border-top:3px solid var(--twilight)}
+
+.chart{width:100%;height:420px;direction:ltr}
+#c3d{height:520px}
+@media (max-width:640px){.chart{height:360px} #c3d{height:440px}}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.82rem;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:14px;height:10px;border-radius:3px;display:inline-block}
+.tabs{display:flex;gap:8px;flex-wrap:wrap}
+.load{color:var(--muted);font-size:.85rem;padding:40px 0;text-align:center}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap" dir="rtl">
+  <header>
+    <h1>مدار الليل والنهار</h1>
+    <p class="sub" id="placeLine">…</p>
+  </header>
+
+  <section class="panel" aria-labelledby="locH">
+    <h2 id="locH">الموقع</h2>
+    <div class="row">
+      <button class="primary" id="gpsBtn" type="button">استخدم موقع الجوال</button>
+      <label>مدينة
+        <select id="city"></select>
+      </label>
+    </div>
+    <p id="geoMsg"></p>
+    <div class="controls">
+      <label>خط العرض
+        <input id="lat" type="number" step="0.0001" min="-89" max="89">
+      </label>
+      <label>خط الطول
+        <input id="lon" type="number" step="0.0001" min="-180" max="180">
+      </label>
+      <label>السنة
+        <select id="year"></select>
+      </label>
+      <label>وقت العصر
+        <select id="asr">
+          <option value="1">الجمهور: ظل الشيء مثله</option>
+          <option value="2">الحنفية: ظل الشيء مثلاه</option>
+        </select>
+      </label>
+    </div>
+    <p class="note">طريقة الحساب: أم القرى. الفجر عند انخفاض الشمس 18.5° تحت الأفق، والعشاء بعد المغرب بـ 90 دقيقة (120 دقيقة في رمضان).</p>
+  </section>
+
+  <section class="panel" aria-labelledby="dayH">
+    <div class="row2" style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline">
+      <h2 id="dayH">يوم <span id="dayName"></span></h2>
+      <span class="note" id="hijri"></span>
+    </div>
+    <div class="today">
+      <svg id="ring" viewBox="0 0 300 300" role="img" aria-label="ساعات اليوم الأربع والعشرون: النهار والشفق والليل وأوقات الصلاة"></svg>
+      <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+        <div class="lens">
+          <div class="len"><span>طول النهار</span><b id="dayLen"></b></div>
+          <div class="len"><span>طول الليل</span><b id="nightLen"></b></div>
+        </div>
+        <ul class="prayers" id="plist"></ul>
+      </div>
+    </div>
+    <div class="dayPick">
+      <input type="range" id="dayRange" min="0" max="364" value="0" aria-label="اختر يومًا من السنة">
+      <div class="row2">
+        <span class="note">اسحب لتغيير اليوم، أو اضغط على أي يوم في المخططات</span>
+        <button type="button" id="todayBtn">اليوم</button>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="keyH" style="display:flex;flex-direction:column;gap:10px">
+    <h2 id="keyH">أيام فارقة في السنة</h2>
+    <div class="keys" id="keys"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="yH">
+    <h2 id="yH">الليل والنهار على مدار العام</h2>
+    <p class="note">كل عمود رأسي يوم من أيام السنة، من منتصف الليل (أسفل) إلى منتصف الليل التالي (أعلى). المساحة الذهبية هي النهار، والبنفسجية الشفق، والداكنة الليل. الخطوط الملونة أوقات الصلاة.</p>
+    <div class="legend" id="leg1"></div>
+    <div id="cYear" class="chart"><div class="load">جارٍ تحميل المخطط…</div></div>
+  </section>
+
+  <section class="panel" aria-labelledby="lH">
+    <h2 id="lH">طول النهار مقابل طول الليل</h2>
+    <p class="note">مجموعهما دائمًا 24 ساعة. يتقاطع الخطان قرب الاعتدالين، ويبتعدان أقصى ما يكون عند الانقلابين.</p>
+    <div id="cLen" class="chart"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="dH">
+    <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+      <h2 id="dH">مشهد ثلاثي الأبعاد</h2>
+      <div class="seg" role="group" aria-label="نوع المشهد">
+        <button type="button" id="v3surf" aria-pressed="true">سطح ارتفاع الشمس</button>
+        <button type="button" id="v3dome" aria-pressed="false">قبة السماء</button>
+      </div>
+    </div>
+    <p class="note" id="d3note"></p>
+    <div id="c3d" class="chart"></div>
+  </section>
+
+  <p class="note">الحساب فلكي يجري داخل الصفحة، ويتراوح الفرق عن التقويم الرسمي بين دقيقة ودقيقتين. لا يُحسب ارتفاع المكان عن سطح البحر.</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.35.2/plotly.min.js"></script>
+<script>
+(function(){
+"use strict";
+/* ---------- astronomy ---------- */
+const D2R=Math.PI/180, R2D=180/Math.PI;
+const sin=d=>Math.sin(d*D2R), cos=d=>Math.cos(d*D2R), tan=d=>Math.tan(d*D2R);
+const asin=x=>Math.asin(x)*R2D, acos=x=>Math.acos(x)*R2D, atan2=(y,x)=>Math.atan2(y,x)*R2D;
+const fix=(a,b)=>{a=a-b*Math.floor(a/b);return a<0?a+b:a};
+function julian(y,m,d){ if(m<=2){y-=1;m+=12} const A=Math.floor(y/100),B=2-A+Math.floor(A/4);
+  return Math.floor(365.25*(y+4716))+Math.floor(30.6001*(m+1))+d+B-1524.5 }
+function sunPos(jd){ const D=jd-2451545.0, g=fix(357.529+0.98560028*D,360), q=fix(280.459+0.98564736*D,360);
+  const L=fix(q+1.915*sin(g)+0.020*sin(2*g),360), e=23.439-0.00000036*D;
+  const RA=atan2(cos(e)*sin(L),cos(L))/15, decl=asin(sin(e)*sin(L)), eqt=q/15-fix(RA,24);
+  return {decl,eqt} }
+
+const SUNALT=-0.833, FAJR=-18.5;
+function dayTimes(y,m,d,lat,lon,tz,asrF,ramadan){
+  const jd0=julian(y,m,d)-lon/(15*24);
+  const noonAt=t=>fix(12-sunPos(jd0+t/24).eqt,24);
+  const angleTime=(alt,t,ccw)=>{ const decl=sunPos(jd0+t/24).decl, n=noonAt(t);
+    const c=(sin(alt)-sin(decl)*sin(lat))/(cos(decl)*cos(lat)); if(c<-1||c>1) return NaN;
+    const T=acos(c)/15; return n+(ccw?-T:T) };
+  const asrAlt=t=>{const decl=sunPos(jd0+t/24).decl; return Math.atan(1/(asrF+tan(Math.abs(lat-decl))))*R2D};
+  let t={fajr:5,sunrise:6,dhuhr:12,asr:13,sunset:18,astroE:19,astroM:5,civM:6,civE:18};
+  for(let i=0;i<2;i++){
+    const g=k=>isNaN(t[k])?({fajr:5,sunrise:6,dhuhr:12,asr:13,sunset:18,astroE:19,astroM:5,civM:6,civE:18})[k]:t[k];
+    t={fajr:angleTime(FAJR,g('fajr'),true), sunrise:angleTime(SUNALT,g('sunrise'),true), dhuhr:noonAt(g('dhuhr')),
+       asr:angleTime(asrAlt(g('asr')),g('asr'),false), sunset:angleTime(SUNALT,g('sunset'),false),
+       astroM:angleTime(-18,g('astroM'),true), astroE:angleTime(-18,g('astroE'),false),
+       civM:angleTime(-6,g('civM'),true), civE:angleTime(-6,g('civE'),false)};
+  }
+  const adj=tz-lon/15, out={};
+  for(const k in t) out[k]=isNaN(t[k])?NaN:t[k]+adj;
+  out.maghrib=out.sunset;
+  out.isha=isNaN(out.maghrib)?NaN:out.maghrib+(ramadan?2:1.5);
+  const sp=sunPos(jd0+0.5); out.decl=sp.decl; out.eqt=sp.eqt;
+  // day length: polar day/night fallback
+  if(isNaN(out.sunrise)||isNaN(out.sunset)){
+    const noonAlt=90-Math.abs(lat-sp.decl); out.dayLen=noonAlt>0?24:0;
+  } else out.dayLen=out.sunset-out.sunrise;
+  out.noonAlt=90-Math.abs(lat-sp.decl);
+  return out;
+}
+function altitude(lat,decl,solarHour){ const H=15*(solarHour-12);
+  return asin(sin(lat)*sin(decl)+cos(lat)*cos(decl)*cos(H)) }
+function azimuth(lat,decl,solarHour){ const H=15*(solarHour-12);
+  return fix(atan2(sin(H),cos(H)*sin(lat)-tan(decl)*cos(lat))+180,360) }
+
+/* ---------- time zones and calendars ---------- */
+const DEVICE_TZ=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC"}catch(e){return "UTC"}})();
+function tzOffset(zone,y,m,d){ // hours east of UTC at local noon
+  try{ const dt=new Date(Date.UTC(y,m-1,d,12));
+    const p=new Intl.DateTimeFormat("en-US",{timeZone:zone,hourCycle:"h23",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}).formatToParts(dt);
+    const g=t=>+p.find(x=>x.type===t).value;
+    const asUTC=Date.UTC(g("year"),g("month")-1,g("day"),g("hour")%24,g("minute"));
+    return Math.round((asUTC-dt.getTime())/60000)/60 }catch(e){ return 0 } }
+let hijriMonthFmt=null, hijriFmt=null;
+try{ hijriMonthFmt=new Intl.DateTimeFormat("en-u-ca-islamic-umalqura",{month:"numeric",timeZone:"UTC"});
+     hijriFmt=new Intl.DateTimeFormat("ar-SA-u-ca-islamic-umalqura",{day:"numeric",month:"long",year:"numeric",timeZone:"UTC"}) }catch(e){}
+const isRamadan=(y,m,d)=>{ if(!hijriMonthFmt) return false; try{return parseInt(hijriMonthFmt.format(new Date(Date.UTC(y,m-1,d,12))),10)===9}catch(e){return false} };
+
+const MONTHS=["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
+const WEEK=["الأحد","الإثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
+const CITIES=[
+  ["مكة المكرمة",21.4225,39.8262,"Asia/Riyadh"],["المدينة المنورة",24.4672,39.6111,"Asia/Riyadh"],
+  ["الرياض",24.7136,46.6753,"Asia/Riyadh"],["جدة",21.4858,39.1925,"Asia/Riyadh"],["الدمام",26.4207,50.0888,"Asia/Riyadh"],
+  ["أبها",18.2164,42.5053,"Asia/Riyadh"],["تبوك",28.3838,36.5662,"Asia/Riyadh"],["عرعر",30.9753,41.0381,"Asia/Riyadh"],
+  ["القاهرة",30.0444,31.2357,"Africa/Cairo"],["الإسكندرية",31.2001,29.9187,"Africa/Cairo"],["أسوان",24.0889,32.8998,"Africa/Cairo"],
+  ["دبي",25.2048,55.2708,"Asia/Dubai"],["الكويت",29.3759,47.9774,"Asia/Kuwait"],["الدوحة",25.2854,51.531,"Asia/Qatar"],
+  ["مسقط",23.588,58.3829,"Asia/Muscat"],["عمّان",31.9539,35.9106,"Asia/Amman"],["الدار البيضاء",33.5731,-7.5898,"Africa/Casablanca"],
+  ["إسطنبول",41.0082,28.9784,"Europe/Istanbul"],["لندن",51.5072,-0.1276,"Europe/London"],["أوسلو",59.9139,10.7522,"Europe/Oslo"]
+];
+
+/* ---------- state ---------- */
+const $=id=>document.getElementById(id);
+const S={lat:21.4225,lon:39.8262,zone:"Asia/Riyadh",place:"مكة المكرمة",year:2026,asr:1,dayIdx:0,view3:"surf",data:null};
+(function initPlace(){
+  const byZone={"Africa/Cairo":8,"Asia/Dubai":11,"Asia/Kuwait":12,"Asia/Qatar":13,"Asia/Muscat":14,"Asia/Amman":15,"Africa/Casablanca":16,"Europe/Istanbul":17,"Europe/London":18,"Europe/Oslo":19,"Asia/Riyadh":2};
+  let i=byZone[DEVICE_TZ]; try{const s=JSON.parse(localStorage.getItem("mdr-place")||"null"); if(s&&isFinite(s.lat)){Object.assign(S,s);return}}catch(e){}
+  if(i!=null){const c=CITIES[i];S.place=c[0];S.lat=c[1];S.lon=c[2];S.zone=c[3]}
+})();
+function savePlace(){try{localStorage.setItem("mdr-place",JSON.stringify({lat:S.lat,lon:S.lon,zone:S.zone,place:S.place}))}catch(e){}}
+
+const now=new Date();
+S.year=now.getFullYear();
+
+function daysInYear(y){return ((y%4===0&&y%100!==0)||y%400===0)?366:365}
+function dateOf(y,idx){const d=new Date(Date.UTC(y,0,1+idx));return {y:d.getUTCFullYear(),m:d.getUTCMonth()+1,d:d.getUTCDate(),wd:d.getUTCDay()}}
+
+function computeYear(){
+  const n=daysInYear(S.year), days=[];
+  for(let i=0;i<n;i++){ const dt=dateOf(S.year,i), tz=tzOffset(S.zone,dt.y,dt.m,dt.d), ram=isRamadan(dt.y,dt.m,dt.d);
+    const t=dayTimes(dt.y,dt.m,dt.d,S.lat,S.lon,tz,S.asr,ram); t.date=dt; t.tz=tz; t.ram=ram; days.push(t) }
+  S.data=days;
+}
+
+/* ---------- formatting ---------- */
+const AR_DIG="٠١٢٣٤٥٦٧٨٩";
+function hm(h,twelve){ if(!isFinite(h)) return "—"; h=fix(h,24); let mm=Math.round(h*60); if(mm>=1440)mm-=1440;
+  let H=Math.floor(mm/60), M=mm%60;
+  if(twelve){const suf=H<12?"ص":"م"; let h12=H%12; if(h12===0)h12=12; return h12+":"+String(M).padStart(2,"0")+" "+suf}
+  return String(H).padStart(2,"0")+":"+String(M).padStart(2,"0") }
+function dur(h){ if(!isFinite(h)) return "—"; const mm=Math.round(h*60); return Math.floor(mm/60)+" س "+String(mm%60).padStart(2,"0")+" د" }
+const dLabel=dt=>dt.d+" "+MONTHS[dt.m-1];
+
+/* ---------- theme ---------- */
+function tok(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()}
+function T(){return {bg:tok("--bg"),surface:tok("--surface"),fg:tok("--fg"),muted:tok("--muted"),line:tok("--line"),
+  day:tok("--day"),dawn:tok("--dawn"),tw:tok("--twilight"),night:tok("--night"),accent:tok("--accent"),
+  fajr:tok("--fajr"),shuruq:tok("--shuruq"),dhuhr:tok("--dhuhr"),asr:tok("--asr"),maghrib:tok("--maghrib"),isha:tok("--isha")}}
+function hex2rgb(h){h=h.replace("#","");if(h.length===3)h=h.split("").map(c=>c+c).join("");const n=parseInt(h,16);return [n>>16&255,n>>8&255,n&255]}
+function mix(a,b,t){const A=hex2rgb(a),B=hex2rgb(b);return "rgb("+A.map((v,i)=>Math.round(v+(B[i]-v)*t)).join(",")+")"}
+function rgba(h,a){const c=hex2rgb(h);return "rgba("+c.join(",")+","+a+")"}
+function skyColor(alt,c){ if(alt>=6) return c.day; if(alt>=-0.833) return mix(c.dawn,c.day,(alt+0.833)/6.833);
+  if(alt>=-6) return mix(c.tw,c.dawn,(alt+6)/5.167); if(alt>=-18) return mix(c.night,c.tw,(alt+18)/12); return c.night }
+
+const PR=[["fajr","الفجر","fajr"],["sunrise","الشروق","shuruq"],["dhuhr","الظهر","dhuhr"],["asr","العصر","asr"],["maghrib","المغرب","maghrib"],["isha","العشاء","isha"]];
+
+/* ---------- day ring ---------- */
+function renderRing(){
+  const c=T(), t=S.data[S.dayIdx], svg=$("ring"), cx=150, cy=150, R=104, W=26;
+  const ang=h=>((h-12)/24)*2*Math.PI; // noon at top, clockwise
+  const pt=(h,r)=>[cx+r*Math.sin(ang(h)), cy-r*Math.cos(ang(h))];
+  let s="";
+  const step=5/60, solarShift=-t.tz+S.lon/15+t.eqt;
+  for(let h=0;h<24;h+=step){
+    const alt=altitude(S.lat,t.decl,h+step/2+solarShift);
+    const a=pt(h,R+W/2),b=pt(h+step+0.01,R+W/2),d=pt(h+step+0.01,R-W/2),e=pt(h,R-W/2);
+    s+=`<path d="M${a[0].toFixed(2)},${a[1].toFixed(2)} A${R+W/2},${R+W/2} 0 0 1 ${b[0].toFixed(2)},${b[1].toFixed(2)} L${d[0].toFixed(2)},${d[1].toFixed(2)} A${R-W/2},${R-W/2} 0 0 0 ${e[0].toFixed(2)},${e[1].toFixed(2)}Z" fill="${skyColor(alt,c)}"/>`;
+  }
+  // hour ticks
+  for(let h=0;h<24;h+=3){const [x,y]=pt(h,R-W/2-10);
+    s+=`<text x="${x.toFixed(1)}" y="${(y+4).toFixed(1)}" text-anchor="middle" font-size="10" fill="${c.muted}" font-family="IBM Plex Mono,monospace">${String(h).padStart(2,"0")}</text>`}
+  // prayer markers
+  PR.forEach(([k,name,col])=>{ const h=t[k]; if(!isFinite(h))return; const [x1,y1]=pt(h,R-W/2-1),[x2,y2]=pt(h,R+W/2+7),[lx,ly]=pt(h,R+W/2+20);
+    s+=`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${c[col]}" stroke-width="2.5" stroke-linecap="round"/>`;
+    s+=`<text x="${lx.toFixed(1)}" y="${(ly+4).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="600" fill="${c[col]}" font-family="IBM Plex Sans Arabic,sans-serif">${name}</text>`});
+  // now hand
+  const today=isTodayIdx(S.dayIdx);
+  if(today){ const nh=nowHourIn(S.zone); const [x,y]=pt(nh,R+W/2+2),[x0,y0]=pt(nh,R-W/2-2);
+    s+=`<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${c.fg}" stroke-width="3" stroke-linecap="round"/>`;
+    const [nx,ny]=pt(nh,R); s+=`<circle cx="${nx.toFixed(1)}" cy="${ny.toFixed(1)}" r="4" fill="${c.fg}"/>` }
+  s+=`<text x="150" y="138" text-anchor="middle" font-size="12" fill="${c.muted}" font-family="IBM Plex Sans Arabic,sans-serif">ارتفاع الشمس ظهرًا</text>`;
+  s+=`<text x="150" y="166" text-anchor="middle" font-size="26" fill="${c.fg}" font-family="IBM Plex Mono,monospace">${t.noonAlt.toFixed(1)}°</text>`;
+  s+=`<text x="150" y="188" text-anchor="middle" font-size="11" fill="${c.muted}" font-family="IBM Plex Sans Arabic,sans-serif">${today?"العقرب: الآن":"الظهر في الأعلى"}</text>`;
+  svg.innerHTML=s;
+}
+function nowHourIn(zone){ try{const p=new Intl.DateTimeFormat("en-US",{timeZone:zone,hourCycle:"h23",hour:"2-digit",minute:"2-digit"}).formatToParts(new Date());
+  return (+p.find(x=>x.type==="hour").value)%24+(+p.find(x=>x.type==="minute").value)/60}catch(e){return now.getHours()+now.getMinutes()/60} }
+function todayIdx(){ if(now.getFullYear()!==S.year) return -1; try{
+  const p=new Intl.DateTimeFormat("en-CA",{timeZone:S.zone,year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()).split("-").map(Number);
+  if(p[0]!==S.year) return -1; return Math.round((Date.UTC(p[0],p[1]-1,p[2])-Date.UTC(S.year,0,1))/864e5)}catch(e){return -1} }
+const isTodayIdx=i=>i===todayIdx();
+
+function renderDay(){
+  const t=S.data[S.dayIdx], dt=t.date;
+  $("dayName").textContent=WEEK[dt.wd]+" "+dt.d+" "+MONTHS[dt.m-1]+" "+dt.y;
+  $("hijri").textContent=(hijriFmt?hijriFmt.format(new Date(Date.UTC(dt.y,dt.m-1,dt.d,12))):"")+(t.ram?" · رمضان":"");
+  $("dayLen").textContent=dur(t.dayLen); $("nightLen").textContent=dur(24-t.dayLen);
+  let nextK=null;
+  if(isTodayIdx(S.dayIdx)){ const nh=nowHourIn(S.zone); for(const [k] of PR){ if(k!=="sunrise"&&isFinite(t[k])&&t[k]>nh){nextK=k;break} } }
+  $("plist").innerHTML=PR.map(([k,name,col])=>`<li class="${k===nextK?"next":""}"><span class="name"><span class="dot" style="background:var(--${col})"></span>${name}${k===nextK?'<span class="pill">القادمة</span>':""}</span><span class="num">${isFinite(t[k])?hm(t[k],true):"لا يتحقق"}</span></li>`).join("");
+  $("dayRange").value=S.dayIdx;
+  renderRing();
+  markDay();
+}
+
+/* ---------- key days ---------- */
+function keyDays(){
+  const D=S.data; let mx=0,mn=0; D.forEach((t,i)=>{if(t.dayLen>D[mx].dayLen)mx=i; if(t.dayLen<D[mn].dayLen)mn=i});
+  const eq=[]; for(let i=1;i<D.length;i++){ if((D[i-1].decl<0)!==(D[i].decl<0)) eq.push(Math.abs(D[i-1].decl)<Math.abs(D[i].decl)?i-1:i) }
+  let eqLen=[]; for(let i=1;i<D.length;i++){ if((D[i-1].dayLen<12)!==(D[i].dayLen<12)) eqLen.push(i) }
+  return {mx,mn,eq,eqLen};
+}
+function renderKeys(){
+  const K=keyDays(), D=S.data, north=S.lat>=0;
+  const items=[
+    {cls:"sum",k:"أطول نهار",i:K.mx,v:"النهار "+dur(D[K.mx].dayLen)},
+    {cls:"win",k:"أطول ليل",i:K.mn,v:"الليل "+dur(24-D[K.mn].dayLen)}];
+  K.eq.forEach((i,j)=>items.push({cls:"eq",k:(north?(j===0?"الاعتدال الربيعي":"الاعتدال الخريفي"):(j===0?"الاعتدال الخريفي":"الاعتدال الربيعي")),i,v:"النهار "+dur(D[i].dayLen)}));
+  $("keys").innerHTML=items.map(o=>`<button type="button" class="key ${o.cls}" data-i="${o.i}"><span class="k">${o.k}</span><span class="d">${dLabel(D[o.i].date)}</span><span class="v">${o.v}</span></button>`).join("")
+   + (K.eqLen.length?`<p class="note" style="grid-column:1/-1;margin:0">يتساوى الليل والنهار فعليًا (12 ساعة) يوم ${K.eqLen.map(i=>dLabel(D[i].date)).join(" ويوم ")}، قبل الاعتدال الربيعي بأيام وبعد الخريفي بأيام، لأن انكسار الضوء في الغلاف الجوي يُظهر الشمس قبل شروقها الهندسي.</p>`:"");
+  document.querySelectorAll(".key").forEach(b=>b.addEventListener("click",()=>{S.dayIdx=+b.dataset.i;renderDay()}));
+  return K;
+}
+
+/* ---------- year charts ---------- */
+const hasPlotly=()=>typeof window.Plotly!=="undefined";
+function monthTicks(){const v=[],t=[];for(let m=0;m<12;m++){v.push(Math.round((Date.UTC(S.year,m,1)-Date.UTC(S.year,0,1))/864e5));t.push(MONTHS[m])}return {v,t}}
+function baseLayout(c){ return {paper_bgcolor:c.surface,plot_bgcolor:c.surface,font:{family:"IBM Plex Sans Arabic, sans-serif",color:c.fg,size:12},
+  margin:{l:52,r:14,t:10,b:44},showlegend:false,hoverlabel:{bgcolor:c.surface,bordercolor:c.line,font:{color:c.fg,family:"IBM Plex Sans Arabic, sans-serif"},align:"right"},dragmode:false}}
+const cfg={displayModeBar:false,responsive:true};
+let K=null;
+
+function renderYear(){
+  const c=T(), D=S.data, x=D.map((_,i)=>i), mt=monthTicks();
+  const cleanH=v=>isFinite(v)?fix(v,24):null;
+  const mk=(k)=>D.map(t=>cleanH(t[k]));
+  const astroM=D.map(t=>isFinite(t.astroM)?t.astroM:(t.dayLen>=24||t.noonAlt>-18&&t.noonAlt<0?null:null));
+  // bands (stacked from 0): night -> astro twilight start; twilight -> sunrise; day -> sunset; twilight -> astro end; night -> 24
+  const sr=D.map(t=>isFinite(t.sunrise)?t.sunrise:(t.dayLen>=24?0:12));
+  const ss=D.map(t=>isFinite(t.sunset)?t.sunset:(t.dayLen>=24?24:12));
+  const am=D.map((t,i)=>isFinite(t.astroM)?t.astroM:(t.noonAlt>-18?0:sr[i]));   // never fully dark -> twilight from midnight
+  const ae=D.map((t,i)=>isFinite(t.astroE)?t.astroE:(t.noonAlt>-18?24:ss[i]));
+  const band=(lo,hi,col,name)=>[
+    {x,y:lo,mode:"lines",line:{width:0},hoverinfo:"skip"},
+    {x,y:hi,mode:"lines",line:{width:0},fill:"tonexty",fillcolor:col,hoverinfo:"skip",name}];
+  const zero=x.map(()=>0), full=x.map(()=>24);
+  const traces=[...band(zero,am,rgba(c.night,.9)),...band(am,sr,rgba(c.tw,.55)),...band(sr,ss,rgba(c.day,.55)),...band(ss,ae,rgba(c.tw,.55)),...band(ae,full,rgba(c.night,.9))];
+  const hov=D.map(t=>`<b>${dLabel(t.date)}</b>${t.ram?" · رمضان":""}<br>`+PR.map(([k,n])=>`${n}: ${hm(t[k],true)}`).join("<br>")+`<br>النهار ${dur(t.dayLen)} · الليل ${dur(24-t.dayLen)}`);
+  PR.forEach(([k,name,col],j)=>{ traces.push({x,y:mk(k),mode:"lines",name,line:{color:c[col],width:k==="sunrise"?1.6:2.2,dash:k==="sunrise"?"dot":"solid"},
+    hoverinfo:j===0?"text":"skip",text:j===0?hov:undefined,connectgaps:false}) });
+  // today + key day markers
+  const ti=todayIdx(), shapes=[], ann=[];
+  [[K.mx,"أطول نهار",c.day],[K.mn,"أطول ليل",c.muted],...K.eq.map(i=>[i,"اعتدال",c.tw])].forEach(([i,l,col])=>{
+    shapes.push({type:"line",x0:i,x1:i,y0:0,y1:24,line:{color:col,width:1,dash:"dash"}});
+    ann.push({x:i,y:24,yanchor:"bottom",text:l,showarrow:false,font:{size:10,color:c.muted}})});
+  if(ti>=0) {shapes.push({type:"line",x0:ti,x1:ti,y0:0,y1:24,line:{color:c.fg,width:1.5}});ann.push({x:ti,y:0,yanchor:"top",text:"اليوم",showarrow:false,font:{size:10,color:c.fg},yshift:-2})}
+  shapes.push({type:"line",x0:S.dayIdx,x1:S.dayIdx,y0:0,y1:24,line:{color:c.accent,width:2},name:"sel"});
+  const L=baseLayout(c); L.margin.t=24;
+  L.xaxis={range:[0,D.length-1],tickvals:mt.v,ticktext:mt.t,tickangle:-45,gridcolor:c.line,zeroline:false,fixedrange:true,tickfont:{size:10}};
+  L.yaxis={range:[0,24],tickvals:[0,3,6,9,12,15,18,21,24],ticktext:["00","03","06","09","12","15","18","21","24"],gridcolor:rgba(c.fg,.08),zeroline:false,fixedrange:true,title:{text:"الساعة",font:{size:11,color:c.muted}}};
+  L.hovermode="x"; L.shapes=shapes; L.annotations=ann;
+  Plotly.react("cYear",traces,L,cfg);
+  $("leg1").innerHTML=`<span><i class="sw" style="background:${rgba(c.day,.55)}"></i>نهار</span><span><i class="sw" style="background:${rgba(c.tw,.55)}"></i>شفق</span><span><i class="sw" style="background:${rgba(c.night,.9)}"></i>ليل</span>`+
+    PR.map(([k,n,col])=>`<span><i class="sw" style="background:var(--${col});height:3px"></i>${n}</span>`).join("");
+}
+function renderLen(){
+  const c=T(), D=S.data, x=D.map((_,i)=>i), mt=monthTicks();
+  const dl=D.map(t=>t.dayLen), nl=D.map(t=>24-t.dayLen);
+  const traces=[
+    {x,y:dl,mode:"lines",name:"النهار",line:{color:c.day,width:3},fill:"tozeroy",fillcolor:rgba(c.day,.15),text:D.map(t=>dLabel(t.date)+"<br>النهار "+dur(t.dayLen)+"<br>الليل "+dur(24-t.dayLen)),hoverinfo:"text"},
+    {x,y:nl,mode:"lines",name:"الليل",line:{color:c.night==="#1f2d4f"?c.night:c.tw,width:3},hoverinfo:"skip"},
+    {x:[K.mx],y:[dl[K.mx]],mode:"markers+text",marker:{size:9,color:c.day},text:["أطول نهار "+dur(dl[K.mx])],textposition:"top center",textfont:{size:11,color:c.fg},hoverinfo:"skip"},
+    {x:[K.mn],y:[nl[K.mn]],mode:"markers+text",marker:{size:9,color:c.tw},text:["أطول ليل "+dur(nl[K.mn])],textposition:"top center",textfont:{size:11,color:c.fg},hoverinfo:"skip"}];
+  const lo=Math.max(0,Math.floor(Math.min(...dl,...nl))-1), hi=Math.min(24,Math.ceil(Math.max(...dl,...nl))+1.5);
+  const L=baseLayout(c);
+  L.xaxis={range:[0,D.length-1],tickvals:mt.v,ticktext:mt.t,tickangle:-45,gridcolor:c.line,zeroline:false,fixedrange:true,tickfont:{size:10}};
+  L.yaxis={range:[lo,hi],gridcolor:rgba(c.fg,.08),zeroline:false,fixedrange:true,ticksuffix:" س"};
+  L.hovermode="x"; L.shapes=[{type:"line",x0:0,x1:D.length-1,y0:12,y1:12,line:{color:c.muted,width:1,dash:"dot"}},{type:"line",x0:S.dayIdx,x1:S.dayIdx,y0:lo,y1:hi,line:{color:c.accent,width:2}}];
+  L.annotations=[{x:D.length-1,y:12,xanchor:"right",yanchor:"bottom",text:"12 ساعة",showarrow:false,font:{size:10,color:c.muted}},
+    {x:D.length*0.02,y:dl[0],xanchor:"left",yanchor:dl[0]<12?"top":"bottom",text:"النهار",showarrow:false,font:{size:11,color:c.fg}},
+    {x:D.length*0.02,y:nl[0],xanchor:"left",yanchor:nl[0]<12?"top":"bottom",text:"الليل",showarrow:false,font:{size:11,color:c.fg}}];
+  Plotly.react("cLen",traces,L,cfg);
+}
+function markDay(){
+  if(!hasPlotly()||!S.data) return;
+  ["cYear","cLen"].forEach(id=>{ const el=$(id); if(!el.layout||!el.layout.shapes) return;
+    const sh=el.layout.shapes.slice(); const i=sh.length-1; sh[i]=Object.assign({},sh[i],{x0:S.dayIdx,x1:S.dayIdx}); Plotly.relayout(el,{shapes:sh}) });
+}
+
+/* ---------- 3D ---------- */
+function render3D(){
+  const c=T(), D=S.data;
+  const L=baseLayout(c); L.margin={l:0,r:0,t:0,b:0};
+  const ax=(title,extra)=>Object.assign({title:{text:title,font:{size:11,color:c.muted}},gridcolor:c.line,zerolinecolor:c.line,backgroundcolor:c.surface,showbackground:true,color:c.muted,tickfont:{size:10}},extra||{});
+  if(S.view3==="surf"){
+    $("d3note").textContent="المحور الأول أيام السنة، والثاني ساعات اليوم، والارتفاع هو ارتفاع الشمس بالدرجات. ما فوق الصفر نهار، وما تحته ليل وشفق. الخطوط الملونة أوقات الصلاة مرسومة على السطح. اسحب بإصبعك لتدوير المشهد، وقرّب بإصبعين.";
+    const di=[]; for(let i=0;i<D.length;i+=3) di.push(i); if(di[di.length-1]!==D.length-1) di.push(D.length-1);
+    const hrs=[]; for(let h=0;h<=24.001;h+=1/6) hrs.push(+h.toFixed(4));
+    const z=hrs.map(h=>di.map(i=>{const t=D[i];return altitude(S.lat,t.decl,h-t.tz+S.lon/15+t.eqt)}));
+    const zmin=Math.min(...z.flat()), zmax=Math.max(...z.flat());
+    const p=v=>Math.max(0,Math.min(1,(v-zmin)/(zmax-zmin)));
+    const cs=[[0,c.night],[p(-18),c.night],[p(-6),c.tw],[p(-0.9),c.dawn],[p(0.5),c.day],[1,mix(c.day,"#ffffff",.35)]].sort((a,b)=>a[0]-b[0]);
+    const traces=[{type:"surface",x:di,y:hrs,z,colorscale:cs,cmin:zmin,cmax:zmax,showscale:false,opacity:.96,
+      contours:{z:{show:true,start:0,end:0,size:1,color:c.fg,width:2}},hoverinfo:"skip",lighting:{ambient:.8,diffuse:.5,specular:.05}}];
+    PR.forEach(([k,name,col])=>{ const xs=[],ys=[],zs=[],tx=[];
+      for(let i=0;i<D.length;i+=2){const t=D[i],h=t[k]; if(!isFinite(h)){xs.push(null);ys.push(null);zs.push(null);tx.push("");continue}
+        const hh=fix(h,24); xs.push(i);ys.push(hh);zs.push(altitude(S.lat,t.decl,hh-t.tz+S.lon/15+t.eqt)+0.6);tx.push(`${name} · ${dLabel(t.date)} · ${hm(h,true)}`)}
+      traces.push({type:"scatter3d",mode:"lines",x:xs,y:ys,z:zs,line:{color:c[col],width:5},text:tx,hoverinfo:"text",name}) });
+    const mt=monthTicks();
+    L.scene={xaxis:ax("الشهر",{tickvals:mt.v.filter((_,i)=>i%2===0),ticktext:mt.t.filter((_,i)=>i%2===0)}),
+             yaxis:ax("الساعة",{tickvals:[0,6,12,18,24],range:[0,24]}),zaxis:ax("ارتفاع الشمس °"),
+             camera:{eye:{x:-1.5,y:-1.5,z:0.9}},aspectmode:"manual",aspectratio:{x:1.5,y:1.2,z:.7},dragmode:"turntable"};
+    Plotly.react("c3d",traces,L,{responsive:true,displayModeBar:false,scrollZoom:true});
+  } else {
+    $("d3note").textContent="أنت في مركز القبة. كل خط مسار الشمس في يوم واحد من الشروق إلى الغروب: الصيفي أعلى وأطول، والشتوي أخفض وأقصر. القرص الداكن هو الأفق، وعليه الجهات الأربع. اسحب لتدوير المشهد.";
+    const K2=K, sets=[[K2.mx,"أطول نهار",c.day],[K2.mn,"أطول ليل",c.isha],...K2.eq.slice(0,1).map(i=>[i,"الاعتدال",c.asr]),[S.dayIdx,"اليوم المختار",c.accent]];
+    const traces=[];
+    // horizon disc
+    const th=[];for(let a=0;a<=360;a+=5)th.push(a);
+    traces.push({type:"scatter3d",mode:"lines",x:th.map(a=>sin(a)),y:th.map(a=>cos(a)),z:th.map(()=>0),line:{color:c.muted,width:3},hoverinfo:"skip"});
+    traces.push({type:"mesh3d",x:[0,...th.map(a=>sin(a))],y:[0,...th.map(a=>cos(a))],z:th.map(()=>0).concat([0]),i:th.map(()=>0),j:th.map((_,k)=>k+1),k:th.map((_,k)=>((k+1)%th.length)+1),color:c.night,opacity:.35,hoverinfo:"skip"});
+    // dome meridians
+    [0,90].forEach(az0=>{const xs=[],ys=[],zs=[];for(let a=0;a<=180;a+=5){xs.push(cos(a)*sin(az0));ys.push(cos(a)*cos(az0));zs.push(sin(a))}
+      traces.push({type:"scatter3d",mode:"lines",x:xs,y:ys,z:zs,line:{color:rgba(c.muted,.35),width:2},hoverinfo:"skip"})});
+    sets.forEach(([i,label,col])=>{ const t=D[i], xs=[],ys=[],zs=[],tx=[];
+      for(let h=0;h<=24;h+=0.1){ const sh=h-t.tz+S.lon/15+t.eqt, alt=altitude(S.lat,t.decl,sh); if(alt<-0.833){xs.push(null);ys.push(null);zs.push(null);tx.push("");continue}
+        const az=azimuth(S.lat,t.decl,sh); xs.push(cos(alt)*sin(az));ys.push(cos(alt)*cos(az));zs.push(sin(alt));tx.push(`${label} · ${dLabel(t.date)} · ${hm(h,true)} · ارتفاع ${alt.toFixed(0)}°`)}
+      traces.push({type:"scatter3d",mode:"lines",x:xs,y:ys,z:zs,line:{color:col,width:7},text:tx,hoverinfo:"text"});
+      // prayer points on this path
+      const px=[],py=[],pz=[],pc=[],pt=[];
+      ["dhuhr","asr"].forEach(k=>{const h=t[k]; if(!isFinite(h))return; const sh=h-t.tz+S.lon/15+t.eqt, alt=altitude(S.lat,t.decl,sh), az=azimuth(S.lat,t.decl,sh);
+        px.push(cos(alt)*sin(az));py.push(cos(alt)*cos(az));pz.push(sin(alt));pc.push(c[k]);pt.push((k==="dhuhr"?"الظهر":"العصر")+" · "+label+" · "+hm(h,true))});
+      traces.push({type:"scatter3d",mode:"markers",x:px,y:py,z:pz,marker:{size:5,color:pc},text:pt,hoverinfo:"text"});
+    });
+    traces.push({type:"scatter3d",mode:"text",x:[0,1.12,0,-1.12],y:[1.12,0,-1.12,0],z:[0,0,0,0],text:["شمال","شرق","جنوب","غرب"],textfont:{color:c.fg,size:13},hoverinfo:"skip"});
+    const hid={visible:false,showbackground:false};
+    L.scene={xaxis:Object.assign({range:[-1.2,1.2]},hid),yaxis:Object.assign({range:[-1.2,1.2]},hid),zaxis:Object.assign({range:[-0.05,1.1]},hid),
+      aspectmode:"manual",aspectratio:{x:1,y:1,z:.5},camera:{eye:{x:0.2,y:-1.6,z:0.8}},dragmode:"turntable"};
+    Plotly.react("c3d",traces,L,{responsive:true,displayModeBar:false,scrollZoom:true});
+  }
+}
+
+/* ---------- wiring ---------- */
+function renderAll(){
+  computeYear(); K=renderKeys();
+  $("placeLine").innerHTML=`${S.place} · <span class="num">${S.lat.toFixed(3)}°, ${S.lon.toFixed(3)}°</span> · توقيت ${S.zone}`;
+  $("lat").value=S.lat.toFixed(4); $("lon").value=S.lon.toFixed(4);
+  const ti=todayIdx(); if(S.dayIdx>=S.data.length) S.dayIdx=S.data.length-1;
+  if(hasPlotly()){ renderYear(); renderLen(); render3D() } else { $("cYear").innerHTML='<div class="load">تعذّر تحميل مكتبة المخططات. تحقق من الاتصال بالإنترنت ثم أعد فتح الصفحة.</div>' }
+  renderDay();
+}
+// controls
+const citySel=$("city");
+citySel.innerHTML='<option value="">— اختر —</option>'+CITIES.map((c,i)=>`<option value="${i}">${c[0]}</option>`).join("");
+const ci=CITIES.findIndex(c=>c[0]===S.place); if(ci>=0) citySel.value=ci;
+citySel.addEventListener("change",()=>{ if(citySel.value==="")return; const c=CITIES[+citySel.value]; S.place=c[0];S.lat=c[1];S.lon=c[2];S.zone=c[3]; savePlace(); renderAll() });
+const ys=$("year"); for(let y=S.year-1;y<=S.year+2;y++) ys.insertAdjacentHTML("beforeend",`<option value="${y}">${y}</option>`); ys.value=S.year;
+ys.addEventListener("change",()=>{S.year=+ys.value; const t=todayIdx(); S.dayIdx=t>=0?t:Math.min(S.dayIdx,daysInYear(S.year)-1); renderAll()});
+$("asr").addEventListener("change",e=>{S.asr=+e.target.value; renderAll()});
+function manual(){ const la=parseFloat($("lat").value), lo=parseFloat($("lon").value); if(!isFinite(la)||!isFinite(lo)||Math.abs(la)>89||Math.abs(lo)>180) return;
+  if(Math.abs(la-S.lat)<1e-5&&Math.abs(lo-S.lon)<1e-5) return;
+  S.lat=la;S.lon=lo;S.place="موقع مخصص";S.zone=DEVICE_TZ;citySel.value=""; savePlace(); renderAll() }
+$("lat").addEventListener("change",manual); $("lon").addEventListener("change",manual);
+$("gpsBtn").addEventListener("click",()=>{
+  const msg=$("geoMsg");
+  if(!navigator.geolocation){msg.textContent="هذا المتصفح لا يتيح تحديد الموقع. اختر مدينة أو أدخل الإحداثيات.";return}
+  msg.textContent="جارٍ تحديد الموقع…";
+  navigator.geolocation.getCurrentPosition(p=>{ S.lat=p.coords.latitude;S.lon=p.coords.longitude;S.zone=DEVICE_TZ;S.place="موقعي الحالي";citySel.value="";
+      msg.textContent="تم تحديد موقعك بدقة "+Math.round(p.coords.accuracy)+" متر."; savePlace(); renderAll() },
+    ()=>{ msg.textContent="لم يُسمح بالوصول إلى الموقع في هذه المعاينة. اختر مدينتك من القائمة أو أدخل خط العرض والطول. في تطبيق الأندرويد سيُحدَّد الموقع من GPS مباشرة." },
+    {enableHighAccuracy:true,timeout:10000,maximumAge:600000});
+});
+$("dayRange").addEventListener("input",e=>{S.dayIdx=+e.target.value; renderDay()});
+$("todayBtn").addEventListener("click",()=>{const t=todayIdx(); if(t<0){S.year=now.getFullYear();ys.value=S.year;S.dayIdx=todayIdx();renderAll()} else {S.dayIdx=t;renderDay()}});
+function setView(v){S.view3=v;$("v3surf").setAttribute("aria-pressed",v==="surf");$("v3dome").setAttribute("aria-pressed",v==="dome"); if(hasPlotly()) render3D()}
+$("v3surf").addEventListener("click",()=>setView("surf")); $("v3dome").addEventListener("click",()=>setView("dome"));
+function bindClicks(){ ["cYear","cLen"].forEach(id=>{ const el=$(id); if(el.on) el.on("plotly_click",ev=>{ const p=ev.points&&ev.points[0]; if(p&&isFinite(p.x)){S.dayIdx=Math.round(p.x);renderDay(); if(S.view3==="dome")render3D()} }) }) }
+// theme changes
+const rerenderTheme=()=>{ if(S.data){ if(hasPlotly()){renderYear();renderLen();render3D()} renderRing() } };
+try{ matchMedia("(prefers-color-scheme: dark)").addEventListener("change",rerenderTheme) }catch(e){}
+new MutationObserver(rerenderTheme).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+// start
+S.dayIdx=Math.max(0,todayIdx());
+renderAll(); if(hasPlotly()) bindClicks();
+setInterval(()=>{ if(isTodayIdx(S.dayIdx)) renderDay() },60000);
+// expose for testing
+window.__mdr={dayTimes,S};
+})();
+</script>
